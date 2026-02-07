@@ -284,14 +284,18 @@ button{
     // Listener de mudança de autenticação (MOVIDO PARA DENTRO DO MÓDULO E ADAPTADO)
     auth.onAuthStateChanged(function(user) {
         if (user) {
+            // MOVER AQUI para garantir que a tela de login suma imediatamente
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+
             window.currentUser = user; // Atualiza a variável global
             
             db.collection('usuarios').doc(user.uid).get()
                 .then(function(doc) {
+                    let userName = user.email; // Default to email
                     if (doc.exists) {
                         window.isAdmin = doc.data().admin === true; // Atualiza a variável global
-                        var nome = doc.data().nome || user.email;
-                        mostrarSistema(nome);
+                        userName = doc.data().nome || user.email;
                     } else {
                         // Criar registro de usuário se não existir
                         db.collection('usuarios').doc(user.uid).set({
@@ -301,12 +305,14 @@ button{
                             criadoEm: serverTimestamp() // Usa a função serverTimestamp importada
                         });
                         window.isAdmin = false; // Atualiza a variável global
-                        mostrarSistema(user.email);
                     }
+                    mostrarSistema(userName); // Passa o nome de usuário determinado para a função
                 })
                 .catch(function(error) {
-                    console.error('Erro ao buscar usuário:', error);
-                    mostrarSistema(user.email);
+                    console.error('Erro ao buscar ou criar usuário Firestore:', error);
+                    // Mesmo com erro no Firestore, o sistema principal deve carregar para um usuário autenticado.
+                    window.isAdmin = false; // Garante que isAdmin seja false em caso de erro
+                    mostrarSistema(user.email); // Usa email se o nome não puder ser obtido
                 });
         } else {
             window.currentUser = null;
@@ -463,7 +469,7 @@ button{
 </div>
 <!-- Alergias: tudo na mesma linha; textarea aparece só se Sim -->
 <div class="row nowrap" style="align-items: flex-start;">
-<div style="min-width: 90px; margin-top: 6px;">Alergias:</div>
+<div style="min-width: 90px;">Alergias:</div>
 <label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
 <input name="alergias_check" onclick="toggleAlergiaCampo(true)" type="radio" value="sim"/> Sim
     </label>
@@ -778,11 +784,11 @@ button{
       <input name="inf_atb1" placeholder="Ex: Piperacilina-tazobactam" style="width: 100%;" type="text"/>
 </label>
 <label style="min-width: 140px;">D:
-      <input name="inf_dia_atb1" placeholder="ex: 3" style="width: 100%;" type="number"/>
+      <input name="inf_dia_atb1" placeholder="ex: 3" type="number"/>
 </label>
 <div style="min-width: 50px; padding-bottom: 8px;">de</div>
 <label style="min-width: 140px;">:
-      <input name="inf_total_atb1" placeholder="ex: 7" style="width: 100%;" type="number"/>
+      <input name="inf_total_atb1" placeholder="ex: 7" type="number"/>
 </label>
 </div>
 <div class="row nowrap" style="align-items: flex-end;">
@@ -790,11 +796,11 @@ button{
       <input name="inf_atb2" placeholder="(opcional)" style="width: 100%;" type="text"/>
 </label>
 <label style="min-width: 140px;">D:
-      <input name="inf_dia_atb2" style="width: 100%;" type="number"/>
+      <input name="inf_dia_atb2" type="number"/>
 </label>
 <div style="min-width: 50px; padding-bottom: 8px;">de</div>
 <label style="min-width: 140px;">:
-      <input name="inf_total_atb2" style="width: 100%;" type="number"/>
+      <input name="inf_total_atb2" type="number"/>
 </label>
 </div>
 <div class="row nowrap" style="align-items: flex-end;">
@@ -802,11 +808,11 @@ button{
       <input name="inf_atb3" placeholder="(opcional)" style="width: 100%;" type="text"/>
 </label>
 <label style="min-width: 140px;">D:
-      <input name="inf_dia_atb3" style="width: 100%;" type="number"/>
+      <input name="inf_dia_atb3" type="number"/>
 </label>
 <div style="min-width: 50px; padding-bottom: 8px;">de</div>
 <label style="min-width: 140px;">:
-      <input name="inf_total_atb3" style="width: 100%;" type="number"/>
+      <input name="inf_total_atb3" type="number"/>
 </label>
 </div>
 <div class="row nowrap" style="align-items: center;">
@@ -1144,6 +1150,7 @@ button{
 <h3>Ectoscopia</h3>
 <div class="row">
 <textarea name="evo_ectoscopia" rows="3" style="width: 100%;"></textarea>
+</label>
 </div>
 </div>
 <!-- Respiratório -->
@@ -1353,7 +1360,7 @@ button{
 <div class="hidden" id="evo_ecg_txt_wrap" style="flex: 1;">
 <textarea name="evo_ecg_txt" placeholder="Descrever ECG do dia" rows="2" style="width: 100%;"></textarea>
 </div>
-<div class="row nowrap" style="align-items: center;">
+<div class="row nowrap" style="align-items: center; margin-top: 10px;">
 <div style="min-width: 220px;">POCUS cardíaco do dia:</div>
 <label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
 <input name="evo_pocus_card" onclick="evoToggleBox('evo_pocus_card_desc', true)" type="radio" value="sim"/> Sim
@@ -1558,7 +1565,7 @@ button{
 <label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
 <input name="evo_culturas" onclick="evoToggleCulturas('positivas')" type="radio" value="positivas"/> Positivas
 </label>
-<div class="hidden" id="evo_cult_pend_wrap" style="flex: 1;"><input name="evo_cult_pend_data" placeholder="data/hora da coleta (pendentes)" style="width: 100%;" type="text"/></div>
+<div class="hidden" id="evo_cult_pend_wrap" style="flex: 1;"><input name="evo_cult_pend_data" placeholder="data/hora da coleta (pendentes)" type="text" style="width: 100%;"/></div>
 <div class="hidden" id="evo_cult_pos_wrap" style="flex: 1;">
 <input name="evo_cult_pos_txt" placeholder="descrever culturas positivas" type="text"/>
 </div>
@@ -1931,7 +1938,7 @@ button{
 <label><input name="evo_estase" onclick="evoToggleBox('evo_estase_wrap', true)" type="radio" value="sim"/> Sim</label>
 <label><input name="evo_estase" onclick="evoToggleBox('evo_estase_wrap', false)" type="radio" value="nao"/> Não</label>
 <div class="hidden" id="evo_estase_wrap" style="flex:1; min-width:260px;">
-<input name="evo_estase_residuo" placeholder="Quantidade de resíduo gástrico (mL)" style="width:100%;" type="text"/>
+<input name="evo_estase_residuo" placeholder="Quantidade de resíduo gástrico (mL)" type="text" style="width:100%;"/>
 </div>
 </div>
 <div class="row nowrap" style="align-items:center; gap:14px; flex-wrap:wrap;">
@@ -1939,7 +1946,7 @@ button{
 <label><input name="evo_hipo" onclick="evoToggleBox('evo_hipo_wrap', true)" type="radio" value="sim"/> Sim</label>
 <label><input name="evo_hipo" onclick="evoToggleBox('evo_hipo_wrap', false)" type="radio" value="nao"/> Não</label>
 <div class="hidden" id="evo_hipo_wrap" style="flex:1; min-width:260px;">
-<input name="evo_hipo_glicose" placeholder="Quantidade de glicose feita" style="width:100%;" type="text"/>
+<input name="evo_hipo_glicose" placeholder="Quantidade de glicose feita" type="text" style="width:100%;"/>
 </div>
 </div>
 <div class="row nowrap" style="align-items:center; gap:14px; flex-wrap:wrap;">
@@ -1947,7 +1954,7 @@ button{
 <label><input name="evo_hiper" onclick="evoToggleBox('evo_hiper_wrap', true)" type="radio" value="sim"/> Sim</label>
 <label><input name="evo_hiper" onclick="evoToggleBox('evo_hiper_wrap', false)" type="radio" value="nao"/> Não</label>
 <div class="hidden" id="evo_hiper_wrap" style="flex:1; min-width:260px;">
-<input name="evo_hiper_insulina" placeholder="Quantidade de insulina regular feita" style="width:100%;" type="text"/>
+<input name="evo_hiper_insulina" placeholder="Quantidade de insulina regular feita" type="text" style="width:100%;"/>
 </div>
 </div>
 <div class="row nowrap" style="align-items:center; gap:14px; flex-wrap:wrap;">
@@ -1975,4 +1982,2436 @@ button{
 <input name="evo_nefro" onclick="evoToggleBox('evo_nefro_txt_wrap', false)" type="radio" value="nao"/> Não
       </label>
 <div class="hidden" id="evo_nefro_txt_wrap" style="flex: 1;">
-<textarea name="evo_nefro_txt" placeholder="Descrever" rows="3" style="width: 10
+<textarea name="evo_nefro_txt" placeholder="Descrever" rows="3" style="width: 100%;"></textarea>
+</div>
+</div>
+<div class="row nowrap" style="align-items: center;">
+<div style="min-width: 120px;">CG:</div>
+<label style="flex-direction: row; align-items: center; gap: 8px;">
+<input name="evo_cg" onclick="evoToggleBox('evo_cg_txt_wrap', true)" type="radio" value="sim"/> Sim
+      </label>
+<label style="flex-direction: row; align-items: center; gap: 8px;">
+<input name="evo_cg" onclick="evoToggleBox('evo_cg_txt_wrap', false)" type="radio" value="nao"/> Não
+      </label>
+<div class="hidden" id="evo_cg_txt_wrap" style="flex: 1;">
+<textarea name="evo_cg_txt" placeholder="Descrever" rows="3" style="width: 100%;"></textarea>
+</div>
+</div>
+<div class="row nowrap" style="align-items: center;">
+<div style="min-width: 120px;">CCV:</div>
+<label style="flex-direction: row; align-items: center; gap: 8px;">
+<input name="evo_ccv" onclick="evoToggleBox('evo_ccv_txt_wrap', true)" type="radio" value="sim"/> Sim
+      </label>
+<label style="flex-direction: row; align-items: center; gap: 8px;">
+<input name="evo_ccv" onclick="evoToggleBox('evo_ccv_txt_wrap', false)" type="radio" value="nao"/> Não
+</label>
+<div class="hidden" id="evo_ccv_txt_wrap" style="flex: 1;">
+<textarea name="evo_ccv_txt" placeholder="Descrever" rows="3" style="width: 100%;"></textarea>
+</div>
+</div>
+<div class="row nowrap" style="align-items: center;">
+<div style="min-width: 120px;">Vascular:</div>
+<label style="flex-direction: row; align-items: center; gap: 8px;">
+<input name="evo_vasc" onclick="evoToggleBox('evo_vasc_txt_wrap', true)" type="radio" value="sim"/> Sim
+      </label>
+<label style="flex-direction: row; align-items: center; gap: 8px;">
+<input name="evo_vasc" onclick="evoToggleBox('evo_vasc_txt_wrap', false)" type="radio" value="nao"/> Não
+      </label>
+<div class="hidden" id="evo_vasc_txt_wrap" style="flex: 1;">
+<textarea name="evo_vasc_txt" placeholder="Descrever" rows="3" style="width: 100%;"></textarea>
+</div>
+</div>
+</div>
+<!-- Impressão / Plano -->
+<div class="section">
+<h3>Impressão clínica</h3>
+<div class="row">
+<textarea name="evo_impressao" rows="4" style="width: 100%;"></textarea>
+</div>
+</div>
+<div class="section">
+<h3>Plano / Metas das próximas 24h</h3>
+<div class="row">
+<textarea name="evo_plano_24h" rows="5" style="width: 100%;"></textarea>
+</div>
+</div>
+<div class="section no-print" style="background: #e8f5e9; border: 2px solid #4caf50; padding: 15px;">
+<div class="row nowrap" style="justify-content: center; gap: 12px; flex-wrap: wrap;">
+<button onclick="salvarEvolucao()" type="button" style="background: #4caf50; color: white; font-weight: bold; padding: 10px 20px;">
+    💾 Salvar
+</button>
+<button onclick="evoGerarTexto()" type="button" style="background: #1976d2; color: white; padding: 10px 20px;">
+    📝 Gerar Texto
+</button>
+<button onclick="window.print()" type="button" style="background: #607d8b; color: white; padding: 10px 20px;">
+    🖨️ Imprimir
+</button>
+<button onclick="exportarPDF()" type="button" style="background: #ff9800; color: white; font-weight: bold; padding: 10px 20px;">
+    📄 PDF
+</button>
+<button onclick="evoNovaEvolucao()" type="button" style="background: #9c27b0; color: white; padding: 10px 20px;">
+    🔄 Nova Evolução
+</button>
+</div>
+<div id="lista_evolucoes" style="margin-top: 15px; border-top: 1px solid #a5d6a7; padding-top: 10px;"></div>
+</div>
+</div>
+<!-- Painel: Texto para copiar (Evolução) -->
+<div class="section hidden" id="painelTextoEvo">
+<h3 style="margin-top: 0;">Texto (Evolução) para copiar</h3>
+<div class="row">
+<textarea id="textoGeradoEvo" rows="18" style="width: 100%;"></textarea>
+</div>
+<div class="row nowrap" style="justify-content: flex-end; gap: 10px;">
+<button onclick="evoCopiarTexto()" type="button">Copiar</button>
+<button onclick="evoFecharPainelTexto()" type="button">Fechar</button>
+</div>
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+// ===== Helpers (ES5) =====
+  function byId(id){ return document.getElementById(id); }
+  function qs(sel){ return document.querySelector(sel); }
+  function qsa(sel){ return document.querySelectorAll(sel); }
+function pad2(n){ return (n<10 ? '0' : '') + n; }
+
+  function nowLocalDatetimeValue(){
+    var d = new Date();
+    return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate()) +
+           'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  }
+
+  function clearContainer(el) {
+    if (!el) return;
+    var inputs = el.querySelectorAll('input, textarea, select');
+    for (var i=0;i<inputs.length;i++){
+      var inp = inputs[i];
+      if (inp.type === 'radio' || inp.type === 'checkbox') inp.checked = false;
+      else inp.value = '';
+    }
+  }
+
+
+  function setNowIfEmptyInput(el){
+    if (el && !el.value) el.value = nowLocalDatetimeValue();
+  }
+
+  function setNowIfEmpty(idOrName, within){
+    var el = null;
+    if (within) el = within.querySelector('[name="'+idOrName+'"]') || within.querySelector('#'+idOrName);
+    if (!el) el = byId(idOrName) || qs('[name="'+idOrName+'"]');
+    setNowIfEmptyInput(el);
+  }
+function parseLocalDateTime(s){
+    if (!s) return null;
+    var parts = s.split('T');
+    var datePart = parts[0];
+    if (!datePart || datePart.length < 10) return null;
+
+    var y = parseInt(datePart.substr(0,4),10);
+    var m = parseInt(datePart.substr(5,2),10)-1;
+    var d = parseInt(datePart.substr(8,2),10);
+
+    var hh = 0, mm = 0;
+    if (parts.length > 1 && parts[1].length >= 5) {
+      hh = parseInt(parts[1].substr(0,2),10) || 0;
+      mm = parseInt(parts[1].substr(3,2),10) || 0;
+    }
+    return new Date(y,m,d,hh,mm,0,0);
+  }
+  // ===== Cálculos =====
+  function calcularIMC() {
+    var pesoEl = byId('peso');
+    var alturaEl = byId('altura');
+    var imcEl = byId('imc');
+    if (!imcEl) return;
+
+    var peso = pesoEl ? parseFloat(pesoEl.value) : NaN;
+    var alturaCm = alturaEl ? parseFloat(alturaEl.value) : NaN;
+if (peso > 0 && alturaCm > 0) {
+      var alturaM = alturaCm / 100;
+      var imc = peso / (alturaM * alturaM);
+      imcEl.value = (Math.round(imc * 100) / 100).toFixed(2);
+    } else {
+      imcEl.value = '';
+    }
+  }
+
+  function calcularPBW() {
+    var alturaEl = byId('altura');
+    var sexoEl = byId('sexo');
+    var pbwEl = byId('pbw');
+    if (!pbwEl) return;
+
+    var altura = alturaEl ? parseFloat(alturaEl.value) : NaN;
+    var sexo = sexoEl ? sexoEl.value : '';
+
+    if (!(altura > 0) || !sexo) { pbwEl.value = ''; return; }
+
+    var base = altura - 152.4;
+    var pbw = 0;
+    if (sexo === 'M') pbw = 50 + 0.91 * base;
+    else if (sexo === 'F') pbw = 45.5 + 0.91 * base;
+    else { pbwEl.value = ''; return; }
+
+    pbwEl.value = (Math.round(pbw * 100) / 100).toFixed(2);
+  }
+
+  // ===== UI: Alergias =====
+  function toggleAlergiaCampo(mostrar) {
+    var campo = byId('campoAlergia');
+    if (!campo) return;
+    if (mostrar) {
+      campo.classList.remove('hidden');
+    } else {
+      var ta = campo.querySelector('textarea');
+      if (ta) ta.value = '';
+      campo.classList.add('hidden');
+    }
+  }
+// ===== UI: Toggle Admissão (colapsar/expandir) =====
+  var admissaoColapsada = false;
+  
+  function toggleAdmissao() {
+    var conteudo = byId('admissaoConteudo');
+    var btn = byId('btnToggleAdmissao');
+    var resumo = byId('admissaoResumo');
+    
+    if (!conteudo || !btn) return;
+    
+    if (admissaoColapsada) {
+      // Expandir
+      conteudo.style.display = 'block';
+      btn.innerHTML = '🔽 Recolher';
+      resumo.textContent = '';
+      admissaoColapsada = false;
+    } else {
+      // Colapsar
+      var nome = document.getElementsByName('nome')[0];
+      var idade = byId('idade');
+      var dataAdm = byId('datahora_admissao');
+      
+      var resumoTexto = '';
+      if (nome && nome.value) {
+        resumoTexto = nome.value;
+        if (idade && idade.value) resumoTexto += ', ' + idade.value + ' anos';
+        if (dataAdm && dataAdm.value) {
+          var d = new Date(dataAdm.value);
+          resumoTexto += ' - Adm: ' + d.toLocaleDateString('pt-BR');
+        }
+      }
+      
+      conteudo.style.display = 'none';
+      btn.innerHTML = '🔼 Expandir';
+      resumo.textContent = resumoTexto || '(sem dados)';
+      admissaoColapsada = true;
+    }
+  }
+  
+  function salvarAdmissao() {
+    // Salva os dados da admissão
+    salvarLeitoAtual();
+    
+    // Colapsa automaticamente após salvar
+    if (!admissaoColapsada) {
+      toggleAdmissao();
+    }
+    
+    alert('✅ Admissão salva com sucesso!');
+  }
+// ===== UI: Toggle Transfusões =====
+  function toggleTransfusao(tipo) {
+    var checkbox = document.getElementsByName('evo_transf_' + tipo)[0];
+    var qtdInput = byId('evo_transf_' + tipo + '_qtd');
+    
+    if (!checkbox || !qtdInput) return;
+    
+    if (checkbox.checked) {
+      qtdInput.style.display = 'inline-block';
+      qtdInput.focus();
+    } else {
+      qtdInput.style.display = 'none';
+      qtdInput.value = '';
+    }
+  }
+
+  // ===== UI: Toggle Neurológico (Doppler, Brain4care) =====
+  function toggleNeuroExtra(tipo) {
+    var checkbox = document.getElementsByName('evo_' + tipo + '_check')[0];
+    var wrap = byId('evo_' + tipo + '_wrap');
+    
+    if (!checkbox || !wrap) return;
+    
+    if (checkbox.checked) {
+      wrap.classList.remove('hidden');
+    } else {
+      wrap.classList.add('hidden');
+      var textarea = wrap.querySelector('textarea');
+      if (textarea) textarea.value = '';
+    }
+  }
+// ===== UI: Toggle Hemodinâmico (Swan Ganz, Marcapasso, esCCO) =====
+  function toggleHemoExtra(tipo) {
+    var checkbox = document.getElementsByName('evo_' + tipo + '_check')[0];
+    var wrap = byId('evo_' + tipo + '_wrap');
+    
+    if (!checkbox || !wrap) return;
+    
+    if (checkbox.checked) {
+      wrap.classList.remove('hidden');
+    } else {
+      wrap.classList.add('hidden');
+      // Limpar campos
+      var inputs = wrap.querySelectorAll('input');
+      inputs.forEach(function(input) { input.value = ''; });
+    }
+  }
+
+  // ===== UI: Nova Evolução Rápida =====
+  function novaEvolucaoRapida() {
+    // Colapsa admissão se estiver expandida
+    if (!admissaoColapsada) {
+      toggleAdmissao();
+    }
+    // Abre a evolução diária
+    abrirEvolucao();
+  }
+// ===== UI: Respiratório =====
+  function toggleResp(tipo) {
+    var vm = byId('resp_vm');
+    var venturi = byId('resp_venturi');
+    var cn = byId('resp_cn');
+    var mr = byId('resp_mr');
+    if (!vm || !venturi || !cn || !mr) return;
+
+    vm.classList.add('hidden');
+    venturi.classList.add('hidden');
+    cn.classList.add('hidden');
+    mr.classList.add('hidden');
+
+    
+    // Se voltar para Ar ambiente, limpar campos dos suportes anteriores
+    if (tipo === 'Ar ambiente') {
+      clearContainer(vm);
+      clearContainer(venturi);
+      clearContainer(cn);
+      clearContainer(mr);
+      return;
+    }
+if (tipo === 'VM') vm.classList.remove('hidden');
+    else if (tipo === 'Venturi') venturi.classList.remove('hidden');
+    else if (tipo === 'CN') cn.classList.remove('hidden');
+    else if (tipo === 'MR') mr.classList.remove('hidden');
+  }
+// ===== UI: Gasometria =====
+  function toggleGasometria() {
+    var chk = byId('chk_gaso');
+    var div = byId('gaso_fields');
+    if (!chk || !div) return;
+
+    if (chk.checked) {
+      div.classList.remove('hidden');
+    } else {
+      var ins = div.querySelectorAll('input');
+      for (var i=0;i<ins.length;i++) ins[i].value = '';
+      div.classList.add('hidden');
+    }
+  }
+
+  // ===== UI: Hemodinâmica =====
+  function toggleHemoDrug(drug) {
+    var map = {
+      dobutamina: { chk: 'chk_dobutamina', div: 'drug_dobutamina' },
+      milrinona: { chk: 'chk_milrinona', div: 'drug_milrinona' },
+      noradrenalina: { chk: 'chk_noradrenalina', div: 'drug_noradrenalina' },
+      vasopressina: { chk: 'chk_vasopressina', div: 'drug_vasopressina' }
+    };
+    if (!map[drug]) return;
+
+    var chk = byId(map[drug].chk);
+    var div = byId(map[drug].div);
+    if (!chk || !div) return;
+if (chk.checked) {
+      div.classList.remove('hidden');
+    } else {
+      var input = div.querySelector('input');
+      if (input) input.value = '';
+      div.classList.add('hidden');
+    }
+  }
+
+  function togglePerfusao() {
+    var chk = byId('chk_perf');
+    var div = byId('perf_fields');
+    if (!chk || !div) return;
+
+    if (chk.checked) {
+      div.classList.remove('hidden');
+    } else {
+      var ins = div.querySelectorAll('input');
+      for (var i=0;i<ins.length;i++) ins[i].value = '';
+      div.classList.add('hidden');
+    }
+  }
+
+  // ===== UI: Culturas =====
+  function toggleCultOutros() {
+    var chk = byId('cult_outros_chk');
+    var wrap = byId('cult_outros_txt_wrap');
+    if (!chk || !wrap) return;
+
+    if (chk.checked) wrap.classList.remove('hidden');
+    else {
+      var inp = wrap.querySelector('input');
+      if (inp) inp.value = '';
+      wrap.classList.add('hidden');
+    }
+  }
+function toggleCulturas(sim) {
+    var divSim = byId('culturas_sim');
+    var divNao = byId('culturas_nao');
+    if (!divSim || !divNao) return;
+
+    if (sim) {
+      divSim.classList.remove('hidden');
+      divNao.classList.add('hidden');
+      var motivo = divNao.querySelector('input');
+      if (motivo) motivo.value = '';
+    } else {
+      divNao.classList.remove('hidden');
+      divSim.classList.add('hidden');
+
+      var cbs = divSim.querySelectorAll('input[type="checkbox"]');
+      for (var i=0;i<cbs.length;i++) cbs[i].checked = false;
+
+      var outrosTxt = qs('input[name="cult_outros_txt"]');
+      if (outrosTxt) outrosTxt.value = '';
+      var wrap = byId('cult_outros_txt_wrap');
+      if (wrap) wrap.classList.add('hidden');
+    }
+  }
+// ===== UI: Glasgow =====
+  function calcGlasgow() {
+    var ao = parseFloat((byId('glasgow_ao')||{}).value) || 0;
+    var rv = parseFloat((byId('glasgow_rv')||{}).value) || 0;
+    var rm = parseFloat((byId('glasgow_rm')||{}).value) || 0;
+    var total = ao + rv + rm;
+    var out = byId('glasgow_total');
+    if (out) out.value = total > 0 ? total : '';
+  }
+
+  // ===== UI: Analgesia/Sedação =====
+  function toggleAnalgesia(sim) {
+    var div = byId('analgesia_lista');
+    if (!div) return;
+
+    if (sim) {
+      div.classList.remove('hidden');
+    } else {
+      var cbs = div.querySelectorAll('input[type="checkbox"]');
+      for (var i=0;i<cbs.length;i++) cbs[i].checked = false;
+
+      var doses = div.querySelectorAll('input.dose-input');
+      for (var j=0;j<doses.length;j++) {
+        doses[j].value = '';
+        doses[j].classList.add('hidden');
+      }
+      div.classList.add('hidden');
+    }
+  }
+function toggleDose(chkId, doseId) {
+    var chk = byId(chkId);
+    var dose = byId(doseId);
+    if (!chk || !dose) return;
+
+    if (chk.checked) {
+      dose.classList.remove('hidden');
+      try { dose.focus(); } catch(e){}
+    } else {
+      dose.value = '';
+      dose.classList.add('hidden');
+    }
+  }
+
+  // ===== Evolução: Neuro igual à admissão =====
+  function evoCalcGlasgow() {
+    var ao = parseFloat((byId('evo_glasgow_ao')||{}).value) || 0;
+    var rv = parseFloat((byId('evo_glasgow_rv')||{}).value) || 0;
+    var rm = parseFloat((byId('evo_glasgow_rm')||{}).value) || 0;
+    var total = ao + rv + rm;
+    var out = byId('evo_glasgow_total');
+    if (out) out.value = total > 0 ? String(total) : '';
+  }
+function evoToggleDelirium(sim) {
+    var tipos = byId('evo_delirium_tipos');
+    if (!tipos) return;
+    if (sim) {
+      tipos.classList.remove('hidden');
+    } else {
+      var cbs = tipos.querySelectorAll('input[type="checkbox"]');
+      for (var i=0;i<cbs.length;i++) cbs[i].checked = false;
+      tipos.classList.add('hidden');
+    }
+  }
+
+  function evoToggleAnalgesia(sim) {
+    var div = byId('evo_analgesia_lista');
+    if (!div) return;
+    if (sim) {
+      div.classList.remove('hidden');
+    } else {
+      var cbs = div.querySelectorAll('input[type="checkbox"]');
+      for (var i=0;i<cbs.length;i++) cbs[i].checked = false;
+
+      var doses = div.querySelectorAll('input.dose-input');
+      for (var j=0;j<doses.length;j++) { doses[j].value=''; doses[j].classList.add('hidden'); }
+
+      div.classList.add('hidden');
+    }
+  }
+  // ===== UI: Delirium =====
+  function toggleDelirium(sim) {
+    var tipos = byId('delirium_tipos');
+    if (!tipos) return;
+if (sim) {
+      tipos.classList.remove('hidden');
+    } else {
+      var cbs = tipos.querySelectorAll('input[type="checkbox"]');
+      for (var i=0;i<cbs.length;i++) cbs[i].checked = false;
+      tipos.classList.add('hidden');
+    }
+  }
+
+  // ===== Persistência (LocalStorage) =====
+  function coletarDadosFormulario() {
+    var data = {};
+    var els = qsa('input, select, textarea');
+    for (var i=0;i<els.length;i++) {
+      var el = els[i];
+      var key = el.name || el.id;
+      if (!key) continue;
+
+      if (el.type === 'checkbox') data[key] = !!el.checked;
+      else if (el.type === 'radio') {
+        if (el.checked) data[key] = el.value;
+        else if (typeof data[key] === 'undefined') data[key] = null;
+      } else data[key] = el.value;
+    }
+    return data;
+  }
+function aplicarDadosFormulario(data) {
+    if (!data) return;
+    
+    // Primeiro, aplicar campos com :: (checkboxes e radios salvos no formato antigo)
+    for (var chave in data) {
+      if (chave.includes('::')) {
+        var partes = chave.split('::');
+        var nome = partes[0];
+        var valor = partes[1];
+        var el = qs('input[name="'+nome+'"][value="'+valor+'"]');
+        if (el) el.checked = true;
+      }
+    }
+    
+    // Depois, aplicar os demais campos
+    var els = qsa('input, select, textarea');
+    for (var i=0;i<els.length;i++) {
+      var el = els[i];
+      var key = el.name || el.id;
+      if (!key || typeof data[key] === 'undefined') continue;
+
+      if (el.type === 'checkbox') el.checked = !!data[key];
+      else if (el.type === 'radio') el.checked = (data[key] !== null && el.value === data[key]);
+      else el.value = data[key] !== null ? data[key] : '';
+    }
+
+    calcularIMC();
+    calcularPBW();
+
+    // Alergias
+    var alSim = qs('input[name="alergias_check"][value="sim"]');
+    var alNao = qs('input[name="alergias_check"][value="nao"]');
+    if (alSim && alSim.checked) toggleAlergiaCampo(true);
+    if (alNao && alNao.checked) toggleAlergiaCampo(false);
+
+    // Respiratório
+    var respSel = qs('input[name="resp_suporte"]:checked');
+    if (respSel) toggleResp(respSel.value);
+
+    // Gasometria
+    if (byId('chk_gaso')) toggleGasometria();
+
+    // Culturas
+    var cultSel = qs('input[name="inf_culturas"]:checked');
+    if (cultSel) toggleCulturas(cultSel.value === 'sim');
+    if (byId('cult_outros_chk')) toggleCultOutros();
+
+    // Hemo
+    var drugs = ['dobutamina','milrinona','noradrenalina','vasopressina'];
+    for (var d=0; d<drugs.length; d++) {
+      if (byId('chk_' + drugs[d])) toggleHemoDrug(drugs[d]);
+    }
+    if (byId('chk_perf')) togglePerfusao();
+// Analgesia
+    var analgSel = qs('input[name="analg_sed"]:checked');
+    if (analgSel) toggleAnalgesia(analgSel.value === 'sim');
+
+    // Doses
+    var chkMeds = qsa('#analgesia_lista input[type="checkbox"]');
+    for (var k=0;k<chkMeds.length;k++) {
+      var chk = chkMeds[k];
+      var dose = byId('dose_' + chk.id);
+      if (dose) {
+        if (chk.checked) dose.classList.remove('hidden');
+        else dose.classList.add('hidden');
+      }
+    }
+
+    // Delirium
+    var delSel = qs('input[name="delirium"]:checked');
+    if (delSel) toggleDelirium(delSel.value === 'sim');
+
+    // Glasgow
+    if (byId('glasgow_ao')) calcGlasgow();
+  }
+
+  function salvarFormulario() {
+    try {
+      var data = coletarDadosFormulario();
+      localStorage.setItem('admissao_cti_adulto', JSON.stringify(data));
+      var st = byId('status_save');
+      if (st) {
+        st.textContent = 'Salvo ✔';
+        setTimeout(function(){ st.textContent = ''; }, 2000);
+      }
+    } catch(e){}
+  }
+function carregarFormulario() {
+    try {
+      var raw = localStorage.getItem('admissao_cti_adulto');
+      if (!raw) return;
+      aplicarDadosFormulario(JSON.parse(raw));
+    } catch(e){}
+  }
+
+  // ===== Texto para copiar =====
+  function val(nameOrId) {
+    var el = qs('[name="'+nameOrId+'"]') || byId(nameOrId);
+    if (!el) return '';
+    if (el.type === 'checkbox') return el.checked ? 'Sim' : 'Não';
+    if (el.type === 'radio') {
+      var sel = qs('input[name="'+nameOrId+'"]:checked');
+      return sel ? sel.value : '';
+    }
+    return (el.value || '').replace(/^\s+|\s+$/g,'');
+  }
+
+  function abrirPainelTexto() {
+    var p = byId('painelTexto');
+    if (p) {
+      p.classList.remove('hidden');
+      try { p.scrollIntoView({behavior:'smooth', block:'start'}); } catch(e){ p.scrollIntoView(true); }
+    }
+  }
+
+  function fecharPainelTexto() {
+    var p = byId('painelTexto');
+    if (p) p.classList.add('hidden');
+  }
+function copiarTexto() {
+    var ta = byId('textoGerado');
+    if (!ta) return;
+    ta.focus();
+    ta.select();
+    try { document.execCommand('copy'); } catch(e){}
+  }
+
+  function gerarTexto() {
+    var linhas = [];
+
+    var nome = val('nome');
+    var idade = val('idade');
+    var sexoEl = byId('sexo');
+    var sexo = sexoEl ? sexoEl.value : '';
+    var data = val('data_admissao');
+    var peso = val('peso');
+    var altura = val('altura');
+    var imc = val('imc');
+    var pbw = val('pbw');
+
+    linhas.push('ADMISSÃO CTI ADULTO');
+    var idParts = [];
+    if (nome) idParts.push('Nome: ' + nome);
+    if (idade) idParts.push('Idade: ' + idade);
+    if (sexo) idParts.push('Sexo: ' + sexo);
+    if (data) idParts.push('Data: ' + data);
+    linhas.push('Identificação: ' + idParts.join(' | '));
+var ant = [];
+    if (peso) ant.push('Peso: ' + peso + ' kg');
+    if (altura) ant.push('Altura: ' + altura + ' cm');
+    if (imc) ant.push('IMC: ' + imc);
+    if (pbw) ant.push('PBW: ' + pbw + ' kg');
+    linhas.push('Dados antropométricos: ' + ant.join(' | '));
+    linhas.push('');
+
+    var hma = val('hma'), hpp = val('hpp'), cir = val('cirurgias'), med = val('med_dom');
+    var alSim = qs('input[name="alergias_check"][value="sim"]');
+    var alergiasSim = alSim ? alSim.checked : false;
+    var alergiasTxt = val('alergias');
+
+    if (hma) { linhas.push('HMA: ' + hma); linhas.push(''); }
+    if (hpp) { linhas.push('HPP: ' + hpp); linhas.push(''); }
+    if (cir) { linhas.push('Cirurgias prévias: ' + cir); linhas.push(''); }
+    if (med) { linhas.push('Medicações domiciliares: ' + med); linhas.push(''); }
+    linhas.push('Alergias: ' + (alergiasSim ? (alergiasTxt || 'Sim') : 'Não'));
+    linhas.push('');
+// Imagem
+    var ecg = val('ecg_admissao'), rx = val('rx_torax_admissao'), pocus = val('pocus_admissao'), imgout = val('img_outros');
+    if (ecg || rx || pocus || imgout) {
+      linhas.push('Exames de imagem:');
+      if (ecg) linhas.push('- ECG: ' + ecg);
+      if (rx) linhas.push('- Rx tórax: ' + rx);
+      if (pocus) linhas.push('- POCUS: ' + pocus);
+      if (imgout) linhas.push('- Outros: ' + imgout);
+      linhas.push('');
+    }
+
+    // Laboratório
+    var labs = [];
+    function addLab(lbl, key){ var v = val(key); if (v) labs.push(lbl + ': ' + v); }
+    addLab('Hb','hb'); addLab('Leuco','leuco'); addLab('Plaquetas','plaquetas');
+    addLab('Ureia','ureia'); addLab('Creatinina','creatinina');
+    addLab('Na','na'); addLab('K','k'); addLab('Mg','mg'); addLab('Ca','ca'); addLab('Fósforo','fosforo');
+    addLab('INR','inr'); addLab('PTT','ptt'); addLab('BT','bt'); addLab('BD','bd'); addLab('TGO','tgo'); addLab('TGP','tgp');
+var labOut = val('lab_outros');
+    if (labs.length || labOut) {
+      linhas.push('Laboratório:');
+      if (labs.length) linhas.push('- ' + labs.join(' | '));
+      if (labOut) linhas.push('- Outros relevantes: ' + labOut);
+      linhas.push('');
+    }
+
+    var previos = val('exames_previos_relevantes');
+    if (previos) { linhas.push('Exames prévios relevantes: ' + previos); linhas.push(''); }
+    var exameFisico = val('exame_fisico');
+    if (exameFisico) { linhas.push('Exame físico: ' + exameFisico); linhas.push(''); }
+
+    // Sistemas (resumo)
+    var suporte = '';
+    var respSel = qs('input[name="resp_suporte"]:checked');
+    if (respSel) suporte = respSel.value;
+var respDet = [];
+    if (suporte === 'VM') {
+      function addVM(lbl, key){ var v = val(key); if (v) respDet.push(lbl + ': ' + v); }
+      addVM('Modo','vm_modo'); addVM('Pinsp/PS','vm_pinsp_ps'); addVM('VC','vm_vc'); addVM('FR','vm_fr');
+      addVM('PEEP','vm_peep'); addVM('FiO2','vm_fio2'); addVM('Ppico','vm_ppico'); addVM('Pplatô','vm_pplato'); addVM('Drive','vm_drive');
+    } else if (suporte === 'Venturi') {
+      var vf = val('venturi_fio2'); if (vf) respDet.push('FiO2 Venturi: ' + vf);
+    } else if (suporte === 'CN') {
+      var cl = val('cn_litros'); if (cl) respDet.push('CN: ' + cl + ' L/min');
+    } else if (suporte === 'MR') {
+      var ml = val('mr_litros'); if (ml) respDet.push('MR: ' + ml + ' L/min');
+    }
+var gasChk = byId('chk_gaso');
+    var gasMarcada = gasChk ? gasChk.checked : false;
+    var gasDet = [];
+    function addGas(lbl, key){ var v = val(key); if (v) gasDet.push(lbl + ': ' + v); }
+    addGas('pH','gas_ph'); addGas('pO2','gas_po2'); addGas('pCO2','gas_pco2'); addGas('HCO3','gas_hco3'); addGas('BE','gas_be'); addGas('sO2','gas_so2');
+
+    var hemoBase = [];
+    function addH(lbl,key){ var v=val(key); if (v) hemoBase.push(lbl+': '+v); }
+    addH('Ritmo','hemo_ritmo'); addH('PA','hemo_pa'); addH('FC','hemo_fc'); addH('SpO2','hemo_spo2');
+
+    var drogas = [];
+    function addD(lbl,key){ var v=val(key); if (v) drogas.push(lbl+': '+v); }
+    addD('Dobutamina','dobutamina_dose'); addD('Milrinona','milrinona_dose'); addD('Noradrenalina','noradrenalina_dose'); addD('Vasopressina','vasopressina_dose');
+var perf = [];
+    function addP(lbl,key){ var v=val(key); if (v) perf.push(lbl+': '+v); }
+    addP('Lactato','perf_lactato'); addP('SvcO2','perf_svco2'); addP('GapCO2','perf_gapco2');
+
+    var foco = val('inf_foco');
+    var atbs = [];
+    for (var i=1;i<=3;i++){
+      var a = val('inf_atb'+i);
+      var d = val('inf_dia_atb'+i);
+      var t = val('inf_total_atb'+i);
+      if (a) {
+        var extra = (d || t) ? (' (D' + (d||'') + ' de ' + (t||'') + ')') : '';
+        atbs.push(a + extra);
+      }
+    }
+var culturas = '';
+    var cultSel = qs('input[name="inf_culturas"]:checked');
+    if (cultSel && cultSel.value === 'sim') {
+      var sites = [];
+      if (qs('input[name="cult_urina"]') && qs('input[name="cult_urina"]').checked) sites.push('urina');
+      if (qs('input[name="cult_hemo"]') && qs('input[name="cult_hemo"]').checked) sites.push('hemocultura');
+      if (qs('input[name="cult_traqueal"]') && qs('input[name="cult_traqueal"]').checked) sites.push('secreção traqueal');
+      if (byId('cult_outros_chk') && byId('cult_outros_chk').checked) {
+        var ot = val('cult_outros_txt');
+        sites.push('outros' + (ot ? (' ('+ot+')') : ''));
+      }
+      culturas = 'Culturas: sim' + (sites.length ? (' ['+sites.join(', ')+']') : '');
+    } else if (cultSel && cultSel.value === 'nao') {
+      var mot = val('culturas_motivo');
+      culturas = 'Culturas: não' + (mot ? (' (motivo: '+mot+')') : '');
+    }
+
+    var glas = val('glasgow_total');
+    var rass = val('rass_atual');
+var glas = val('glasgow_total');
+    var rass = val('rass_atual');
+
+    var delirium = '';
+    var delSel = qs('input[name="delirium"]:checked');
+    if (delSel && delSel.value === 'nao') delirium = 'Delirium: não';
+    if (delSel && delSel.value === 'sim') {
+      var tipos = [];
+      if (byId('del_hiper') && byId('del_hiper').checked) tipos.push('hiperativo');
+      if (byId('del_hipo') && byId('del_hipo').checked) tipos.push('hipoativo');
+      if (byId('del_misto') && byId('del_misto').checked) tipos.push('misto');
+      delirium = 'Delirium: sim' + (tipos.length ? (' ('+tipos.join(', ')+')') : '');
+    }
+var analgTxt = '';
+    var analgSel = qs('input[name="analg_sed"]:checked');
+    if (analgSel && analgSel.value === 'nao') analgTxt = 'Analgesia/sedação: não';
+    if (analgSel && analgSel.value === 'sim') {
+      var meds = [];
+      var items = qsa('#analgesia_lista .med-item');
+      for (var ii=0; ii<items.length; ii++) {
+        var chk = items[ii].querySelector('input[type="checkbox"]');
+        var span = items[ii].querySelector('span');
+        var dose = items[ii].querySelector('input.dose-input');
+        if (chk && chk.checked) {
+          meds.push((span ? span.textContent.replace(/^\s+|\s+$/g,'') : '') + (dose && dose.value ? (' ('+dose.value+')') : ''));
+        }
+      }
+      analgTxt = 'Analgesia/sedação: sim' + (meds.length ? (' ['+meds.join('; ')+']') : '');
+    }
+var hasSist = suporte || respDet.length || (gasMarcada && gasDet.length) || hemoBase.length || drogas.length || perf.length || foco || atbs.length || culturas || glas || rass || delirium || analgTxt;
+    if (hasSist) {
+      linhas.push('Sistemas:');
+      var respLine = [];
+      if (suporte) respLine.push('Suporte: '+suporte);
+      if (respDet.length) respLine.push(respDet.join(' | '));
+      if (gasMarcada && gasDet.length) respLine.push('Gasometria: '+gasDet.join(' | '));
+      if (respLine.length) linhas.push('- Respiratório: ' + respLine.join(' | '));
+
+      var hemoLine = [];
+      if (hemoBase.length) hemoLine.push(hemoBase.join(' | '));
+      if (drogas.length) hemoLine.push('Drogas: '+drogas.join(' | '));
+      if (perf.length) hemoLine.push('Perfusão: '+perf.join(' | '));
+      if (hemoLine.length) linhas.push('- Hemodinâmica: ' + hemoLine.join(' | '));
+var infLine = [];
+      if (foco) infLine.push('Foco: '+foco);
+      if (atbs.length) infLine.push('ATB: '+atbs.join(' | '));
+      if (culturas) infLine.push(culturas);
+      if (infLine.length) linhas.push('- Infecção: ' + infLine.join(' | '));
+
+      var neuroLine = [];
+      if (glas) neuroLine.push('Glasgow: '+glas);
+      if (rass) neuroLine.push('RASS: '+rass);
+      if (delirium) neuroLine.push(delirium);
+      if (analgTxt) neuroLine.push(analgTxt);
+      if (neuroLine.length) linhas.push('- Neuro/Sedação: ' + neuroLine.join(' | '));
+
+      linhas.push('');
+    }
+
+    // Invasivos
+    var inv = [];
+    function addInv(lbl, txt){ if (txt) inv.push(lbl + ': ' + txt); }
+var cvcLoc = val('cvc_local'), cvcDia = val('cvc_dia');
+    if (cvcLoc || cvcDia) addInv('CVC', [cvcLoc, cvcDia ? ('dia '+cvcDia) : ''].join(' | ').replace(/\s\|\s$/,''));
+    var artLoc = val('art_local'), artDia = val('art_dia');
+    if (artLoc || artDia) addInv('Cateter arterial', [artLoc, artDia ? ('dia '+artDia) : ''].join(' | ').replace(/\s\|\s$/,''));
+    var hdLoc = val('hd_local'), hdDia = val('hd_dia');
+    if (hdLoc || hdDia) addInv('Cateter de HD', [hdLoc, hdDia ? ('dia '+hdDia) : ''].join(' | ').replace(/\s\|\s$/,''));
+    var svd = val('svd_dia'); if (svd) addInv('SVD', 'dia ' + svd);
+    var tot = val('tot_tqt_dia'); if (tot) addInv('TOT/TQT', 'dia ' + tot);
+    var drenos = val('drenos_outros'); if (drenos) addInv('Drenos/outros', drenos);
+
+    if (inv.length) {
+      linhas.push('Invasivos/Dispositivos:');
+      for (var iii=0; iii<inv.length; iii++) linhas.push('- ' + inv[iii]);
+      linhas.push('');
+    }
+var diag = val('diagnostico_internacao');
+    if (diag) { linhas.push('Diagnóstico(s) de internação: ' + diag); linhas.push(''); }
+
+    var plano = val('plano_metas');
+    if (plano) { linhas.push('Plano/Metas: ' + plano); linhas.push(''); }
+
+    var ta = byId('textoGerado');
+    if (ta) ta.value = linhas.join('\n');
+    abrirPainelTexto();
+  }
+
+  function abrirEvolucao() {
+    var area = byId('evolucaoArea');
+    if (!area) return;
+
+    area.classList.remove('hidden');
+
+    // LIMPAR TODOS OS CAMPOS DA EVOLUÇÃO PRIMEIRO
+    limparCamposEvolucao();
+
+    // auto data/hora evolução (se vazio)
+    var inp = area.querySelector('[name="evo_data"]');
+    if (inp && !inp.value && typeof nowLocalDatetimeValue === 'function') inp.value = nowLocalDatetimeValue();
+// Auto-preencher data/hora da evolução (somente se vazio)
+    setNowIfEmpty('evo_data', area);
+// Copiar identificação da ADMISSÃO (primeira vez)
+    evoAutoFromAdmissao();
+    
+    // Copiar dados da ÚLTIMA EVOLUÇÃO (se existir)
+    copiarDadosEvolucaoAnterior();
+    
+    evoAtualizarDiaUTI();
+
+    try { area.scrollIntoView({behavior:'smooth', block:'start'}); }
+    catch(e) { area.scrollIntoView(true); }
+  
+    try { evoUpdateBigHeader(); } catch(e) {}
+  }
+
+  function limparCamposEvolucao() {
+    var area = byId('evolucaoArea');
+    if (!area) return;
+    
+    var els = qsa('#evolucaoArea input, #evolucaoArea textarea, #evolucaoArea select');
+    for (var i=0;i<els.length;i++){
+      var el = els[i];
+      // Não limpa campos readonly (identificação vem da admissão)
+      if (el.readOnly || el.readonly) continue;
+      
+      if (el.type === 'checkbox' || el.type === 'radio') {
+        el.checked = false;
+      } else {
+        el.value = '';
+      }
+    }
+  }
+function copiarDadosEvolucaoAnterior() {
+    try {
+      // Usa a chave específica do leito
+      var prev = localStorage.getItem('evolucao_last_' + ctiAtual + '_' + leitoAtual);
+      if (!prev) return; // Primeira evolução, não tem anterior
+      
+      var data = JSON.parse(prev);
+      var area = byId('evolucaoArea');
+      
+      // LISTA DE CAMPOS A SEREM COPIADOS DA EVOLUÇÃO ANTERIOR
+      var camposParaCopiar = [
+        // Motivo da internação na UTI
+        'evo_motivo_uti',
+        // Problemas atuais
+        'evo_problemas',
+        // HPP
+        'evo_comorbidades',
+        // Cirurgias prévias
+        'evo_cirurgias',
+        // Medicações em uso
+        'evo_meds',
+        // Alergias
+        'evo_alergias',
+        // Infecção
+        'evo_inf_foco', 'evo_inf_atb1', 'evo_inf_dia_atb1', 'evo_inf_total_atb1',
+        'evo_inf_atb2', 'evo_inf_dia_atb2', 'evo_inf_total_atb2',
+        'evo_inf_atb3', 'evo_inf_dia_atb3', 'evo_inf_total_atb3',
+        // Culturas (radio buttons e campos relacionados)
+        'evo_culturas', 'evo_cult_pend_data', 'evo_cult_pos_txt',
+        // Invasivos/Dispositivos
+        'evo_cvc_local', 'evo_cvc_dia', 
+        'evo_art_local', 'evo_art_dia',
+        'evo_hd_local', 'evo_hd_dia', 
+        'evo_svd_dia', 'evo_tot_tqt_dia',
+        'evo_swanganz_local', 'evo_swanganz_dia', 
+        'evo_bia', 'evo_bia_dia',
+        'evo_mp_transv', 'evo_mp_transv_dia', 
+        'evo_drenos_outros', 'evo_retirados',
+        // Nutrição (apenas campos de texto, não checkboxes)
+        'evo_dieta_tipo', 'evo_dieta_ml', 'evo_dieta_kcal', 'evo_dieta_ptn',
+        'evo_npt_ml', 'evo_npt_kcal', 'evo_npt_ptn',
+        // Impressão clínica
+        'evo_impressao'
+      ];
+      
+      // Copiar cada campo
+      camposParaCopiar.forEach(function(nomeCampo){
+        if (typeof data[nomeCampo] === 'undefined') return;
+        
+        var campo = area.querySelector('[name="'+nomeCampo+'"]');
+        if (!campo) return;
+        
+        if (campo.type === 'radio') {
+          // Para radio buttons, marca o que tem o mesmo valor
+          var radios = area.querySelectorAll('[name="'+nomeCampo+'"]');
+          radios.forEach(function(r) {
+            if (r.value === data[nomeCampo]) {
+              r.checked = true;
+              // Dispara o evento onclick se existir
+              if (r.onclick) r.onclick();
+            }
+          });
+        } else if (campo.type === 'checkbox') {
+          campo.checked = !!data[nomeCampo];
+        } else {
+          campo.value = data[nomeCampo] || '';
+        }
+      });
+      
+      // Reaplica os toggles condicionais para mostrar/esconder campos
+      if (typeof evoToggleCulturas === 'function') evoToggleCulturas();
+      
+    } catch(e) {
+      console.error('Erro ao copiar evolução anterior:', e);
+    }
+  }
+function evoAtualizarDiaUTI() {
+    var out = qs('#evolucaoArea [name="evo_dia_uti"]');
+    if (!out) return;
+    var admDT = val('datahora_admissao');
+    var admD = val('data_admissao');
+    var adm = admDT || admD;
+    var evoEl = qs('#evolucaoArea [name="evo_data"]');
+    var evoDT = evoEl ? evoEl.value : '';
+    if (!adm) { out.value=''; return; }
+    var admDate = parseLocalDateTime(adm);
+    var evoDate = evoDT ? parseLocalDateTime(evoDT) : new Date();
+    if (!admDate || !evoDate) { out.value=''; return; }
+    var diffMs = evoDate.getTime() - admDate.getTime();
+    var dia = Math.floor(diffMs / 86400000) + 1;
+    out.value = (dia>0 ? String(dia) : '');
+  }
+// ===== Evolução diária (ES5) =====
+  function fecharEvolucao() {
+    var area = byId('evolucaoArea');
+    if (area) area.classList.add('hidden');
+    
+    // Limpar modo de edição
+    if (typeof evolucaoEmEdicao !== 'undefined') {
+      evolucaoEmEdicao = null;
+    }
+    var statusDiv = document.getElementById('status_evo_save');
+    if (statusDiv) statusDiv.innerHTML = '';
+  }
+
+  function evoToggleResp(tipo) {
+    var vm = byId('evo_resp_vm');
+    var venturi = byId('evo_resp_venturi');
+    var cn = byId('evo_resp_cn');
+    var mr = byId('evo_resp_mr');
+    if (!vm || !venturi || !cn || !mr) return;
+
+    vm.classList.add('hidden');
+    venturi.classList.add('hidden');
+    cn.classList.add('hidden');
+    mr.classList.add('hidden');
+
+    // Se voltar para Ar ambiente, limpar campos dos suportes anteriores
+    if (tipo === 'Ar ambiente') {
+      clearContainer(vm);
+      clearContainer(venturi);
+      clearContainer(cn);
+      clearContainer(mr);
+      return;
+    }
+
+if (tipo === 'VM') vm.classList.remove('hidden');
+    else if (tipo === 'Venturi') venturi.classList.remove('hidden');
+    else if (tipo === 'CN') cn.classList.remove('hidden');
+    else if (tipo === 'MR') mr.classList.remove('hidden');
+    // Ar ambiente: não abre nada
+  }
+
+  function evoToggleGasometria() {
+    var chk = byId('evo_chk_gaso');
+    var div = byId('evo_gaso_fields');
+    if (!chk || !div) return;
+
+    if (chk.checked) div.classList.remove('hidden');
+    else {
+      var ins = div.querySelectorAll('input');
+      for (var i=0;i<ins.length;i++) ins[i].value = '';
+      div.classList.add('hidden');
+    }
+  }
+function evoToggleHemoDrug(drug) {
+    var map = {
+      dobutamina: { chk: 'evo_chk_dobutamina', div: 'evo_drug_dobutamina' },
+      milrinona: { chk: 'evo_chk_milrinona', div: 'evo_drug_milrinona' },
+      noradrenalina: { chk: 'evo_chk_noradrenalina', div: 'evo_drug_noradrenalina' },
+      vasopressina: { chk: 'evo_chk_vasopressina', div: 'evo_drug_vasopressina' }
+    };
+    if (!map[drug]) return;
+
+    var chk = byId(map[drug].chk);
+    var div = byId(map[drug].div);
+    if (!chk || !div) return;
+
+    if (chk.checked) div.classList.remove('hidden');
+    else {
+      var input = div.querySelector('input');
+      if (input) input.value = '';
+      div.classList.add('hidden');
+    }
+  }
+
+  function evoTogglePerfusao() {
+    var chk = byId('evo_chk_perf');
+    var div = byId('evo_perf_fields');
+    if (!chk || !div) return;
+if (chk.checked) div.classList.remove('hidden');
+    else {
+      var ins = div.querySelectorAll('input');
+      for (var i=0;i<ins.length;i++) ins[i].value = '';
+      div.classList.add('hidden');
+    }
+  }
+
+  function evoToggleECG() {
+    var sel = qs('input[name="evo_ecg_dia"]:checked');
+    var wrap = byId('evo_ecg_txt_wrap');
+    if (!wrap) return;
+    if (sel && sel.value === 'sim') wrap.classList.remove('hidden');
+    else {
+      var inp = wrap.querySelector('input');
+      if (inp) inp.value = '';
+      wrap.classList.add('hidden');
+    }
+  }
+
+  function evoToggleTRS() {
+    var sel = qs('input[name="evo_trs"]:checked');
+    var wrap = byId('evo_trs_tipo_wrap');
+    if (!wrap) return;
+    if (sel && sel.value === 'sim') wrap.classList.remove('hidden');
+    else {
+      var inp = wrap.querySelector('input');
+      if (inp) inp.value = '';
+      wrap.classList.add('hidden');
+    }
+  }
+function evoToggleCulturas(valor) {
+    var wrapPos = byId('evo_cult_pos_wrap');
+    var wrapPend = byId('evo_cult_pend_wrap');
+    if (!wrapPos || !wrapPend) return;
+    
+    evoToggleBox('evo_cult_pos_wrap', valor === 'positivas');
+    evoToggleBox('evo_cult_pend_wrap', valor === 'pendentes');
+  }
+
+  function evoToggleTEV() {
+    var sel = qs('input[name="evo_tev"]:checked');
+    var wrap = byId('evo_tev_just_wrap');
+    if (!wrap) return;
+    if (sel && sel.value === 'nao') wrap.classList.remove('hidden');
+    else {
+      var inp = wrap.querySelector('input');
+      if (inp) inp.value = '';
+      wrap.classList.add('hidden');
+    }
+  }
+function evoToggleInterconsulta(name, wrapId) {
+    var sel = qs('input[name="'+name+'"]:checked');
+    var wrap = byId(wrapId);
+    if (!wrap) return;
+    if (sel && sel.value === 'sim') wrap.classList.remove('hidden');
+    else {
+      var inp = wrap.querySelector('input');
+      if (inp) inp.value = '';
+      wrap.classList.add('hidden');
+    }
+  }
+
+  function evoSetRenalPeriodo(horas) {
+    var bh = byId('evo_bh_label');
+    var diu = byId('evo_diurese_label');
+    if (bh) bh.textContent = 'BH ' + horas + 'h';
+    if (diu) diu.textContent = 'Diurese ' + horas + 'h';
+
+    // marcar rádio correspondente
+    var r = document.querySelector('input[name="evo_renal_periodo"][value="'+String(horas)+'"]');
+    if (r) r.checked = true;
+  }
+function evoSyncRenalPeriodoDefault() {
+    // Se o usuário não escolheu, define padrão pelo turno (diurna=24h, noturna=12h)
+    var chosen = document.querySelector('input[name="evo_renal_periodo"]:checked');
+    if (chosen) { evoSetRenalPeriodo(parseInt(chosen.value,10)); return; }
+
+    var t = document.querySelector('input[name="evo_turno"]:checked');
+    if (t && (t.value === 'Noturna' || t.value === 'noturna')) evoSetRenalPeriodo(12);
+    else evoSetRenalPeriodo(24);
+  }
+
+  function evoCopiarIdentificacao() {
+    evoAutoFromAdmissao();
+    try { if (typeof evoAtualizarDiaUTI === 'function') evoAtualizarDiaUTI(); } catch(e) {}
+    try { if (typeof evoApply === 'function') evoApply(); } catch(e) {}
+  }
+
+  function evoCopiarHPPDaAdmissao() {
+    var area = byId('evolucaoArea');
+    if (!area) return;
+
+    function byName(n){ return document.querySelector('[name="'+n+'"]'); }
+    function vName(n){ var el = byName(n); return el ? (el.value || '') : ''; }
+var dstH = area.querySelector('[name="evo_comorbidades"]');
+    var dstA = area.querySelector('[name="evo_alergias"]');
+    var dstS = area.querySelector('[name="evo_cirurgias"]');
+
+    if (dstH) dstH.value = vName('hpp');
+    if (dstA) dstA.value = vName('alergias');
+    if (dstS) dstS.value = vName('cirurgias');
+
+    try { evoCalcularTFGeClCr && evoCalcularTFGeClCr(); } catch(e) {}
+    try { evoUpdateBigHeader && evoUpdateBigHeader(); } catch(e) {}
+  }
+
+  function evoKey(turno) { return 'evolucao_' + (turno === 'Noturna' ? 'noturna' : 'diurna'); }
+
+  function evoCollect() {
+    var data = {};
+    var els = qsa('#evolucaoArea input, #evolucaoArea textarea, #evolucaoArea select');
+    for (var i=0;i<els.length;i++){
+      var el = els[i];
+      var key = el.name || el.id;
+      if (!key) continue;
+      if (el.type === 'checkbox') data[key] = !!el.checked;
+      else if (el.type === 'radio') {
+        if (el.checked) data[key] = el.value;
+        else if (typeof data[key] === 'undefined') data[key] = null;
+      } else data[key] = el.value;
+    }
+    return data;
+  }
+
+  function evoApply(data) {
+    if (!data) return;
+    var els = qsa('#evolucaoArea input, #evolucaoArea textarea, #evolucaoArea select');
+    for (var i=0;i<els.length;i++){
+      var el = els[i];
+      var key = el.name || el.id;
+      if (!key || typeof data[key] === 'undefined') continue;
+if (el.type === 'checkbox') el.checked = !!data[key];
+      else if (el.type === 'radio') el.checked = (data[key] !== null && el.value === data[key]);
+      else el.value = data[key] !== null ? data[key] : '';
+    }
+
+    // re-aplicar condicionais
+    evoAtualizarLabelsRenal();
+
+    var respSel = qs('input[name="evo_resp_suporte"]:checked');
+    if (respSel) evoToggleResp(respSel.value);
+
+    evoToggleGasometria();
+    evoTogglePerfusao();
+    evoToggleECG();
+    evoToggleTRS();
+    evoToggleCulturas();
+    evoToggleTEV();
+
+    evoToggleInterconsulta('evo_nefro','evo_nefro_txt_wrap');
+    evoToggleInterconsulta('evo_cg','evo_cg_txt_wrap');
+    evoToggleInterconsulta('evo_ccv','evo_ccv_txt_wrap');
+    evoToggleInterconsulta('evo_vasc','evo_vasc_txt_wrap');
+
+    // hemo drugs
+    var drugs = ['dobutamina','milrinona','noradrenalina','vasopressina'];
+    for (var d=0; d<drugs.length; d++) evoToggleHemoDrug(drugs[d]);
+  }
+function evoSalvar() {
+    try {
+      var turnoSel = qs('input[name="evo_turno"]:checked');
+      var turno = turnoSel ? turnoSel.value : 'Diurna';
+      var data = evoCollect();
+      data._saved_at = (new Date()).toISOString();
+      data._turno = turno;
+
+      localStorage.setItem(evoKey(turno), JSON.stringify(data));
+      localStorage.setItem('evolucao_last', JSON.stringify(data));
+
+      var st = byId('status_evo_save');
+      if (st) {
+        st.textContent = 'Salvo ✔';
+        setTimeout(function(){ st.textContent = ''; }, 2000);
+      }
+    } catch(e){}
+  }
+
+  function evoCarregarTurnoAtual() {
+    try {
+      var turnoSel = qs('input[name="evo_turno"]:checked');
+      var turno = turnoSel ? turnoSel.value : 'Diurna';
+      var raw = localStorage.getItem(evoKey(turno));
+      if (!raw) return;
+      evoApply(JSON.parse(raw));
+    } catch(e){}
+  }
+function evoCopiarTurnoAnterior() {
+    try {
+      var raw = localStorage.getItem('evolucao_last');
+      if (!raw) return;
+      var data = JSON.parse(raw);
+      // não sobrescreve turno selecionado (o usuário escolhe)
+      var turnoSel = qs('input[name="evo_turno"]:checked');
+      var turnoAtual = turnoSel ? turnoSel.value : 'Diurna';
+
+      // copiar campos comuns
+      evoApply(data);
+
+      // ajustes de período (diurna/noturna)
+      evoAtualizarLabelsRenal();
+
+      // se estiver indo para Noturna e houver dia de UTI numérico, manter (usuário ajusta se necessário)
+      if (turnoAtual === 'Noturna') {
+        var di = qs('[name="evo_dia_uti"]');
+        if (di && data['evo_dia_uti']) di.value = data['evo_dia_uti'];
+      }
+// marcar turno atual visualmente (sem reescrever localStorage)
+      var ts = qsa('input[name="evo_turno"]');
+      for (var i=0;i<ts.length;i++) ts[i].checked = (ts[i].value === turnoAtual);
+      evoAtualizarLabelsRenal();
+    } catch(e){}
+  }
+
+  function evoAbrirPainelTexto() {
+    var p = byId('painelTextoEvo');
+    if (p) {
+      p.classList.remove('hidden');
+      try { p.scrollIntoView({behavior:'smooth', block:'start'}); } catch(e){ p.scrollIntoView(true); }
+    }
+  }
+
+  function evoFecharPainelTexto() {
+    var p = byId('painelTextoEvo');
+    if (p) p.classList.add('hidden');
+  }
+
+  function evoCopiarTexto() {
+    var ta = byId('textoGeradoEvo');
+    if (!ta) return;
+    ta.focus();
+    ta.select();
+    try { document.execCommand('copy'); } catch(e){}
+  }
+function evoVal(nameOrId) {
+    var el = qs('#evolucaoArea [name="'+nameOrId+'"]') || byId(nameOrId);
+    if (!el) return '';
+    if (el.type === 'checkbox') return el.checked ? 'Sim' : 'Não';
+    if (el.type === 'radio') {
+      var sel = qs('#evolucaoArea input[name="'+nameOrId+'"]:checked');
+      return sel ? sel.value : '';
+    }
+    return (el.value || '').replace(/^\s+|\s+$/g,'');
+  }
+
+  
+  function evoCalcularTFGeClCr() {
+    var creatStr = evoVal('evo_creatinina');
+    var idadeStr = evoVal('evo_idade');
+    var pesoStr  = evoVal('evo_peso');
+    var sexoStr  = evoVal('evo_sexo') || '';
+    function toNum(s){ return parseFloat(String(s).replace(',', '.')); }
+    var creat = toNum(creatStr);
+    var idade = toNum(idadeStr);
+    var peso  = toNum(pesoStr);
+
+    var area = byId('evolucaoArea');
+    if (!area) return;
+    var tfgEl  = area.querySelector('[name="evo_tfg_ckd_epi"]');
+    var clcrEl = area.querySelector('[name="evo_clcr_cg"]');
+if (!(creat > 0) || !(idade > 0) || !(peso > 0)) {
+      if (tfgEl) tfgEl.value = '';
+      if (clcrEl) clcrEl.value = '';
+      return;
+    }
+
+    var s = sexoStr.trim().toUpperCase();
+    var isFem = (s === 'F' || s.indexOf('FEM') === 0);
+
+    // CKD-EPI 2021 (sem fator de raça)
+    var kappa = isFem ? 0.7 : 0.9;
+    var alpha = isFem ? -0.241 : -0.302;
+    var ratio = creat / kappa;
+    var minPart = Math.min(ratio, 1);
+    var maxPart = Math.max(ratio, 1);
+    var eGFR = 142 * Math.pow(minPart, alpha) * Math.pow(maxPart, -1.200) *
+               Math.pow(0.9938, idade) * (isFem ? 1.012 : 1);
+
+    // Cockcroft-Gault (peso atual)
+    var factor = isFem ? 0.85 : 1.0;
+    var clCr = ((140 - idade) * peso * factor) / (72 * creat);
+
+    function fmt(x){ return (isFinite(x) ? (Math.round(x*10)/10).toString() : ''); }
+    if (tfgEl) tfgEl.value = fmt(eGFR);
+    if (clcrEl) clcrEl.value = fmt(clCr);
+  }
+function evoCopiarMedAtual(){
+  try{
+    var prev = localStorage.getItem('evolucao_last');
+    if (!prev) {
+      alert('Nenhuma evolução anterior encontrada. Salve uma evolução primeiro.');
+      return;
+    }
+    var data = JSON.parse(prev);
+    var area = byId('evolucaoArea');
+    var el = area.querySelector('[name="evo_meds"]');
+    if (el && data.evo_meds) el.value = data.evo_meds;
+  }catch(e){
+    alert('Erro ao copiar medicações: ' + e.message);
+  }
+}
+
+function evoCopiarMotivoAnterior(){
+  try{
+    var prev = localStorage.getItem('evolucao_last');
+    if (!prev) {
+      alert('Nenhuma evolução anterior encontrada. Salve uma evolução primeiro.');
+      return;
+    }
+    var data = JSON.parse(prev);
+    var area = byId('evolucaoArea');
+    var campo = area.querySelector('[name="evo_motivo_uti"]');
+    if (campo && data.evo_motivo_uti) campo.value = data.evo_motivo_uti;
+  }catch(e){
+    alert('Erro ao copiar motivo: ' + e.message);
+  }
+}
+function evoCopiarProblemasAnteriores(){
+  try{
+    var prev = localStorage.getItem('evolucao_last');
+    if (!prev) {
+      alert('Nenhuma evolução anterior encontrada. Salve uma evolução primeiro.');
+      return;
+    }
+    var data = JSON.parse(prev);
+    var area = byId('evolucaoArea');
+    var campo = area.querySelector('[name="evo_problemas"]');
+    if (campo && data.evo_problemas) campo.value = data.evo_problemas;
+  }catch(e){
+    alert('Erro ao copiar problemas: ' + e.message);
+  }
+}
+function evoCopiarHPPAnterior(){
+  try{
+    var prev = localStorage.getItem('evolucao_last');
+    if (!prev) {
+      alert('Nenhuma evolução anterior encontrada. Salve uma evolução primeiro.');
+      return;
+    }
+    var data = JSON.parse(prev);
+    var area = byId('evolucaoArea');
+    
+    // Copiar comorbidades
+    var campoComorbidades = area.querySelector('[name="evo_comorbidades"]');
+    if (campoComorbidades && data.evo_comorbidades) campoComorbidades.value = data.evo_comorbidades;
+    
+    // Copiar cirurgias prévias
+    var campoCirurgias = area.querySelector('[name="evo_cirurgias"]');
+    if (campoCirurgias && data.evo_cirurgias) campoCirurgias.value = data.evo_cirurgias;
+    
+    // Copiar baseline se existir
+    var campoBaseline = area.querySelector('[name="evo_baseline"]');
+    if (campoBaseline && data.evo_baseline) campoBaseline.value = data.evo_baseline;
+  }catch(e){
+    alert('Erro ao copiar HPP: ' + e.message);
+  }
+}
+function evoCopiarAlergiasAnterior(){
+  try{
+    var prev = localStorage.getItem('evolucao_last');
+    if (!prev) {
+      alert('Nenhuma evolução anterior encontrada. Salve uma evolução primeiro.');
+      return;
+    }
+    var data = JSON.parse(prev);
+    var area = byId('evolucaoArea');
+    var campo = area.querySelector('[name="evo_alergias"]');
+    if (campo && data.evo_alergias) campo.value = data.evo_alergias;
+  }catch(e){
+    alert('Erro ao copiar alergias: ' + e.message);
+  }
+}
+function evoCopiarInfeccaoAnterior(){
+  try{
+    var prev = localStorage.getItem('evolucao_last');
+    if (!prev) {
+      alert('Nenhuma evolução anterior encontrada. Salve uma evolução primeiro.');
+      return;
+    }
+    var data = JSON.parse(prev);
+    var area = byId('evolucaoArea');
+    
+    // Copiar todos os campos de infecção (textos)
+    var camposTexto = ['evo_inf_foco', 
+                       'evo_inf_atb1', 'evo_inf_dia_atb1', 'evo_inf_total_atb1',
+                       'evo_inf_atb2', 'evo_inf_dia_atb2', 'evo_inf_total_atb2',
+                       'evo_inf_atb3', 'evo_inf_dia_atb3', 'evo_inf_total_atb3',
+                       'evo_cult_pos_txt', 'evo_cult_pend_txt',
+                       'evo_leuco', 'evo_pcr', 'evo_pct', 'evo_pct_data'];
+    
+    camposTexto.forEach(function(nomeCampo){
+      var campo = area.querySelector('[name="'+nomeCampo+'"]');
+      if (campo && data[nomeCampo]) campo.value = data[nomeCampo];
+    });
+    
+    // Copiar campo de culturas (radio)
+    if (data.evo_culturas) {
+      var radios = area.querySelectorAll('input[name="evo_culturas"]');
+      for (var i=0; i<radios.length; i++) {
+        if (radios[i].value === data.evo_culturas) {
+          radios[i].checked = true;
+          // Mostrar campo apropriado
+          if (data.evo_culturas === 'positivas') {
+            evoToggleBox('evo_cult_pos_wrap', true);
+            evoToggleBox('evo_cult_pend_wrap', false);
+          } else if (data.evo_culturas === 'pendentes') {
+            evoToggleBox('evo_cult_pos_wrap', false);
+            evoToggleBox('evo_cult_pend_wrap', true);
+          }
+          break;
+        }
+      }
+    }
+  }catch(e){
+    alert('Erro ao copiar infecção: ' + e.message);
+  }
+}
+function evoCopiarDispositivosAnterior(){
+  try{
+    var prev = localStorage.getItem('evolucao_last');
+    if (!prev) {
+      alert('Nenhuma evolução anterior encontrada. Salve uma evolução primeiro.');
+      return;
+    }
+    var data = JSON.parse(prev);
+    var area = byId('evolucaoArea');
+    
+    // Copiar todos os campos de dispositivos
+    var campos = ['evo_cvc_local', 'evo_cvc_dia', 'evo_art_local', 'evo_art_dia',
+                  'evo_hd_local', 'evo_hd_dia', 'evo_svd_dia', 'evo_tot_tqt_dia',
+                  'evo_swanganz_local', 'evo_swanganz_dia', 'evo_bia', 'evo_bia_dia',
+                  'evo_mp_transv', 'evo_mp_transv_dia', 'evo_drenos_outros', 'evo_retirados'];
+    
+    campos.forEach(function(nomeCampo){
+      var campo = area.querySelector('[name="'+nomeCampo+'"]');
+      if (campo && data[nomeCampo]) campo.value = data[nomeCampo];
+    });
+  }catch(e){
+    alert('Erro ao copiar dispositivos: ' + e.message);
+  }
+}
+function evoCopiarImpressaoAnterior(){
+  try{
+    var prev = localStorage.getItem('evolucao_last');
+    if (!prev) {
+      alert('Nenhuma evolução anterior encontrada. Salve uma evolução primeiro.');
+      return;
+    }
+    var data = JSON.parse(prev);
+    var area = byId('evolucaoArea');
+    var campo = area.querySelector('[name="evo_impressao"]');
+    if (campo && data.evo_impressao) campo.value = data.evo_impressao;
+  }catch(e){
+    alert('Erro ao copiar impressão: ' + e.message);
+  }
+}
+function evoAtualizarHistorico(){
+  var list = byId('evoHistoryList');
+  if (!list) return;
+  list.innerHTML = "";
+  var keys = Object.keys(localStorage).filter(k => k.startsWith("evolucao_"));
+  keys.forEach(k => {
+    var data = JSON.parse(localStorage.getItem(k) || "{}");
+    var btn = document.createElement("button");
+    btn.textContent = data.data || k.replace("evolucao_", "");
+    btn.style.marginRight = "6px";
+    btn.onclick = function(){ evoCarregarEvolucao(k); };
+    list.appendChild(btn);
+  });
+}
+
+function evoCarregarEvolucao(key){
+  var data = JSON.parse(localStorage.getItem(key) || "{}");
+  if(!data) return;
+  evoApply(data);
+  try { evoUpdateBigHeader(); } catch(e){}
+}
+function evoGerarTexto() {
+    var linhas = [];
+    var turnoSel = qs('input[name="evo_turno"]:checked');
+    var turno = turnoSel ? turnoSel.value : '';
+    var data = evoVal('evo_data');
+linhas.push('EVOLUÇÃO ' + (turno ? turno.toUpperCase() : ''));
+    if (data) linhas.push('Data/hora: ' + data);
+    linhas.push('');
+
+    var nome = evoVal('evo_nome');
+    var dia = evoVal('evo_dia_uti');
+    var dx = evoVal('evo_dx_principal');
+    var motivo = evoVal('evo_motivo_uti');
+    linhas.push([nome && ('Nome: '+nome), dia && ('Dia UTI: '+dia), dx && ('Dx principal: '+dx)].filter(Boolean).join(' | '));
+    linhas.push('');
+
+    var comb = evoVal('evo_comorbidades');
+    var base = evoVal('evo_baseline');
+    var al = evoVal('evo_alergias');
+    if (comb || base || al) {
+      linhas.push('HPP:');
+      if (comb) linhas.push('- Comorbidades: ' + comb);
+      if (base) linhas.push('- Baseline: ' + base);
+      if (al) linhas.push('- Alergias: ' + al);
+      linhas.push('');
+    }
+
+    var prob = evoVal('evo_problemas');
+    if (prob) { linhas.push('Problemas ativos:'); linhas.push(prob); linhas.push(''); }
+// Respiratório
+    var supSel = qs('input[name="evo_resp_suporte"]:checked');
+    var sup = supSel ? supSel.value : '';
+    var respDet = [];
+    if (sup === 'VM') {
+      function add(lbl, key){ var v=evoVal(key); if (v) respDet.push(lbl+': '+v); }
+      add('Modo','evo_vm_modo'); add('Pinsp/PS','evo_vm_pinsp_ps'); add('VC','evo_vm_vc'); add('FR','evo_vm_fr');
+      add('PEEP','evo_vm_peep'); add('FiO2','evo_vm_fio2'); add('Ppico','evo_vm_ppico'); add('Pplatô','evo_vm_pplato'); add('Drive','evo_vm_drive');
+    } else if (sup === 'Venturi') {
+      var vf = evoVal('evo_venturi_fio2'); if (vf) respDet.push('FiO2 Venturi: '+vf);
+    } else if (sup === 'CN') {
+      var cl = evoVal('evo_cn_litros'); if (cl) respDet.push('CN: '+cl+' L/min');
+    } else if (sup === 'MR') {
+      var ml = evoVal('evo_mr_litros'); if (ml) respDet.push('MR: '+ml+' L/min');
+    }
+    var gasChk = byId('evo_chk_gaso');
+    var gasMarc = gasChk ? gasChk.checked : false;
+    var gasDet = [];
+    function addG(lbl,key){ var v=evoVal(key); if(v) gasDet.push(lbl+': '+v); }
+    addG('pH','evo_gas_ph'); addG('pO2','evo_gas_po2'); addG('pCO2','evo_gas_pco2'); addG('HCO3','evo_gas_hco3'); addG('BE','evo_gas_be'); addG('sO2','evo_gas_so2');
+if (sup || respDet.length || (gasMarc && gasDet.length)) {
+      linhas.push('Respiratório: ' + [sup && ('Suporte: '+sup), respDet.length && respDet.join(' | '), (gasMarc && gasDet.length) && ('Gasometria: '+gasDet.join(' | '))].filter(Boolean).join(' | '));
+      linhas.push('');
+    }
+
+    // Hemodinâmica
+    var hemo = [];
+    function addH(lbl,key){ var v=evoVal(key); if(v) hemo.push(lbl+': '+v); }
+    addH('Ritmo','evo_hemo_ritmo'); addH('PA','evo_hemo_pa'); addH('FC','evo_hemo_fc'); addH('SpO2','evo_hemo_spo2');
+
+    var drogas = [];
+    function addD(lbl,key){ var v=evoVal(key); if(v) drogas.push(lbl+': '+v); }
+    addD('Dobutamina','evo_dobutamina_dose'); addD('Milrinona','evo_milrinona_dose'); addD('Noradrenalina','evo_noradrenalina_dose'); addD('Vasopressina','evo_vasopressina_dose');
+var perf = [];
+    function addP(lbl,key){ var v=evoVal(key); if(v) perf.push(lbl+': '+v); }
+    addP('Lactato','evo_perf_lactato'); addP('SvcO2','evo_perf_svco2'); addP('GapCO2','evo_perf_gapco2');
+
+    var ecg = evoVal('evo_ecg_txt');
+    if (hemo.length || drogas.length || perf.length || ecg) {
+      var parts = [];
+      if (hemo.length) parts.push(hemo.join(' | '));
+      if (drogas.length) parts.push('Drogas: '+drogas.join(' | '));
+      if (perf.length) parts.push('Perfusão: '+perf.join(' | '));
+      if (ecg) parts.push('ECG: '+ecg);
+      linhas.push('Hemodinâmica: ' + parts.join(' | '));
+      linhas.push('');
+    }
+// Renal
+    var renal = [];
+    function addR(lbl,key){ var v=evoVal(key); if(v) renal.push(lbl+': '+v); }
+    var bhLbl = (byId('evo_bh_label') ? byId('evo_bh_label').textContent : 'BH');
+    var diuLbl = (byId('evo_diurese_label') ? byId('evo_diurese_label').textContent : 'Diurese');
+    addR(bhLbl,'evo_bh_ml'); addR(diuLbl,'evo_diurese_ml'); addR('Ureia','evo_ureia'); addR('Creatinina','evo_creatinina');
+    addR('TFG CKD-EPI','evo_tfg_ckd_epi'); addR('ClCr Cockcroft-Gault','evo_clcr_cg');
+    addR('Na','evo_na'); addR('K','evo_k'); addR('Ca','evo_ca'); addR('Mg','evo_mg'); addR('Fósforo','evo_fosforo');
+    var trsSel = qs('input[name="evo_trs"]:checked'); var trs = trsSel ? trsSel.value : '';
+    var trsTipo = evoVal('evo_trs_tipo');
+    if (trs) renal.push('TRS: '+trs + (trs==='sim' && trsTipo ? ' ('+trsTipo+')' : ''));
+    if (renal.length) { linhas.push('Renal/Metabólico: ' + renal.join(' | ')); linhas.push(''); }
+var meds = evoVal('evo_meds');
+    if (meds) {
+        linhas.push('Medicações em uso: ' + meds);
+        linhas.push('');
+    }
+// Infecção
+    var foco = evoVal('evo_inf_foco');
+    var atbs = [];
+    for (var i=1;i<=3;i++){
+      var a = evoVal('evo_inf_atb'+i);
+      var d = evoVal('evo_inf_dia_atb'+i);
+      var t = evoVal('evo_inf_total_atb'+i);
+      if (a) atbs.push(a + ((d||t) ? (' (D'+(d||'')+' de '+(t||'')+')') : ''));
+    }
+    var cult = evoVal('evo_culturas');
+    var cultPos = evoVal('evo_cult_pos_txt');
+    var infParts = [];
+    if (foco) infParts.push('Foco: '+foco);
+    if (atbs.length) infParts.push('ATB: '+atbs.join(' | '));
+    if (cult) infParts.push('Culturas: '+cult + (cult==='positivas' && cultPos ? ' ('+cultPos+')' : ''));
+    var marc = [];
+    function addM(lbl,key){ var v=evoVal(key); if(v) marc.push(lbl+': '+v); }
+    addM('Leuco','evo_leuco'); addM('PCR','evo_pcr'); addM('PCT','evo_pct'); 
+    var pctd = evoVal('evo_pct_data'); if (pctd) marc.push('Data PCT: '+pctd);
+    if (marc.length) infParts.push('Marcadores: '+marc.join(' | '));
+    if (infParts.length) { linhas.push('Infecção: ' + infParts.join(' | ')); linhas.push(''); }
+// Neuro (igual admissão)
+    var neuroParts = [];
+
+    var gtot = evoVal('evo_glasgow_total');
+    if (gtot) neuroParts.push('Glasgow: ' + gtot);
+
+    var rass = evoVal('evo_rass_atual');
+    if (rass) neuroParts.push('RASS: ' + rass);
+
+    var delSel2 = qs('input[name="evo_delirium"]:checked');
+    if (delSel2) {
+      if (delSel2.value === 'nao') neuroParts.push('Delirium: não');
+      if (delSel2.value === 'sim') {
+        var tipos = [];
+        if (byId('evo_del_hiper') && byId('evo_del_hiper').checked) tipos.push('hiperativo');
+        if (byId('evo_del_hipo') && byId('evo_del_hipo').checked) tipos.push('hipoativo');
+        if (byId('evo_del_misto') && byId('evo_del_misto').checked) tipos.push('misto');
+        neuroParts.push('Delirium: sim' + (tipos.length ? ' ('+tipos.join(', ')+')' : ''));
+      }
+    }
+var analgSel2 = qs('input[name="evo_analg_sed"]:checked');
+    if (analgSel2) {
+      if (analgSel2.value === 'nao') neuroParts.push('Analgesia/sedação: não');
+      if (analgSel2.value === 'sim') {
+        var meds = [];
+        var items = qsa('#evo_analgesia_lista .med-item');
+        for (var ii=0; ii<items.length; ii++) {
+          var chk = items[ii].querySelector('input[type="checkbox"]');
+          var span = items[ii].querySelector('span');
+          var dose = items[ii].querySelector('input.dose-input');
+          if (chk && chk.checked) {
+            meds.push((span ? span.textContent.replace(/^\s+|\s+$/g,'') : '') + (dose && dose.value ? (' ('+dose.value+')') : ''));
+          }
+        }
+        neuroParts.push('Analgesia/sedação: sim' + (meds.length ? ' ['+meds.join('; ')+']' : ''));
+      }
+    }
+
+    if (neuroParts.length) { linhas.push('Neuro/Sedação: ' + neuroParts.join(' | ')); linhas.push(''); }
+// Hema/TEV
+    var hema = [];
+    function addHe(lbl,key){ var v=evoVal(key); if(v) hema.push(lbl+': '+v); }
+    addHe('Hb','evo_hb'); addHe('Plaquetas','evo_plaquetas'); addHe('INR','evo_inr'); addHe('PTT','evo_ptt');
+    var tev = evoVal('evo_tev'); 
+    if (tev) hema.push('Profilaxia TEV: '+tev + (tev==='nao' && evoVal('evo_tev_just') ? ' ('+evoVal('evo_tev_just')+')' : ''));
+    if (hema.length) { linhas.push('Hematológico/Trombose: ' + hema.join(' | ')); linhas.push(''); }
+// Invasivos
+    var inv = [];
+    function addI(lbl, txt){ if (txt) inv.push(lbl+': '+txt); }
+    addI('CVC', [evoVal('evo_cvc_local'), evoVal('evo_cvc_dia') && ('dia '+evoVal('evo_cvc_dia'))].filter(Boolean).join(' | '));
+    addI('Cateter arterial', [evoVal('evo_art_local'), evoVal('evo_art_dia') && ('dia '+evoVal('evo_art_dia'))].filter(Boolean).join(' | '));
+    addI('Cateter HD', [evoVal('evo_hd_local'), evoVal('evo_hd_dia') && ('dia '+evoVal('evo_hd_dia'))].filter(Boolean).join(' | '));
+    if (evoVal('evo_svd_dia')) addI('SVD', 'dia '+evoVal('evo_svd_dia'));
+    if (evoVal('evo_tot_tqt_dia')) addI('TOT/TQT', 'dia '+evoVal('evo_tot_tqt_dia'));
+    if (evoVal('evo_drenos_outros')) addI('Drenos/outros', evoVal('evo_drenos_outros'));
+    var ret = evoVal('evo_retirados'); if (ret) inv.push('Retirados: '+ret);
+    if (inv.length) { linhas.push('Invasivos/Dispositivos:'); for (var ii=0; ii<inv.length; ii++) linhas.push('- '+inv[ii]); linhas.push(''); }
+// Nutrição
+    var nut = [];
+    function addNu(lbl,key){ var v=evoVal(key); if(v) nut.push(lbl+': '+v); }
+    addNu('VET pleno kcal/dia','evo_vet_kcal');
+    addNu('VET pleno prot g/dia','evo_vet_prot');
+    addNu('Dieta','evo_dieta_select');
+    addNu('Infusão mL/h','evo_dieta_mlh');
+    addNu('Volume 24h mL','evo_dieta_ml20');
+    addNu('Kcal 24h','evo_kcal_admin');
+    addNu('Proteína 24h','evo_prot_admin');
+    addNu('Whey (g prot)','evo_whey_prot_g');
+    addNu('% kcal atingido','evo_pct_kcal');
+    addNu('% prot atingido','evo_pct_prot');
+    
+    // GI - checkboxes
+    var vomitos = evoVal('evo_vomitos'); if (vomitos) nut.push('Vômitos: '+vomitos);
+    var distensao = evoVal('evo_distensao'); if (distensao) nut.push('Distensão abd: '+distensao);
+    var estase = evoVal('evo_estase'); 
+    if (estase) {
+      var estaseRes = evoVal('evo_estase_residuo');
+      nut.push('Estase: '+estase + (estase==='sim' && estaseRes ? ' ('+estaseRes+')' : ''));
+    }
+    var hipo = evoVal('evo_hipo');
+    if (hipo) {
+      var hipoGlic = evoVal('evo_hipo_glicose');
+      nut.push('Hipoglicemia: '+hipo + (hipo==='sim' && hipoGlic ? ' ('+hipoGlic+')' : ''));
+    }
+    var hiper = evoVal('evo_hiper');
+    if (hiper) {
+      var hiperIns = evoVal('evo_hiper_insulina');
+      nut.push('Hiperglicemia: '+hiper + (hiper==='sim' && hiperIns ? ' ('+hiperIns+')' : ''));
+    }
+    var profUlcera = evoVal('evo_profilaxia_ulcera');
+    if (profUlcera) nut.push('Profilaxia úlcera estresse: '+profUlcera);
+    
+    if (nut.length) { linhas.push('Nutrição/GI: ' + nut.join(' | ')); linhas.push(''); }
+var outros = evoVal('evo_outros_labs'); if (outros) { linhas.push('Outros exames relevantes:'); linhas.push(outros); linhas.push(''); }
+
+    // Interconsultas
+    function ic(nome, txtKey){ var v=evoVal(nome); var t=evoVal(txtKey); if (v==='sim') return 'sim' + (t ? ' ('+t+')' : ''); if (v==='nao') return 'não'; return ''; }
+    var ics = [];
+    var i1 = ic('evo_nefro','evo_nefro_txt'); if (i1) ics.push('Nefro: '+i1);
+    var i2 = ic('evo_cg','evo_cg_txt'); if (i2) ics.push('CG: '+i2);
+    var i3 = ic('evo_ccv','evo_ccv_txt'); if (i3) ics.push('CCV: '+i3);
+    var i4 = ic('evo_vasc','evo_vasc_txt'); if (i4) ics.push('Vascular: '+i4);
+    if (ics.length) { linhas.push('Interconsultas: ' + ics.join(' | ')); linhas.push(''); }
+
+    var imp = evoVal('evo_impressao'); if (imp) { linhas.push('Impressão clínica:'); linhas.push(imp); linhas.push(''); }
+    var pl = evoVal('evo_plano_24h'); if (pl) { linhas.push('Plano/metas 24h:'); linhas.push(pl); linhas.push(''); }
+var ta = byId('textoGeradoEvo');
+    if (ta) ta.value = linhas.join('\n');
+    evoAbrirPainelTexto();
+  }
+
+
+  // ===== Init =====
+  document.addEventListener('DOMContentLoaded', function(){
+    
+    try { evoSyncRenalPeriodoDefault(); } catch(e) {}
+// Auto-preencher data/hora da admissão (somente se vazio)
+    setNowIfEmpty('datahora_admissao');
+
+    // Campo data (YYYY-MM-DD) existe apenas para compatibilidade interna (hidden)
+    var da = byId('data_admissao') || qs('[name="data_admissao"]');
+    var dth = byId('datahora_admissao');
+
+    if (da && !da.value) {
+      var now = nowLocalDatetimeValue();
+      da.value = now.substr(0,10);
+    }
+
+    if (dth) {
+      dth.addEventListener('change', function(){
+        var v = dth.value || '';
+        if (da && v.length >= 10) da.value = v.substr(0,10);
+        atualizarDiasInternacao();
+        evoRenderHistory();
+    evoUpdateBigHeader();
+    bindEvoHeaderLiveUpdate();
+  });
+    }
+// Auto-preencher data/hora da evolução (somente se vazio)
+    var evoArea = byId('evolucaoArea');
+    if (evoArea) setNowIfEmpty('evo_data', evoArea);
+
+    var ed = qs('#evolucaoArea [name="evo_data"]');
+    if (ed) {
+      ed.addEventListener('change', evoAtualizarDiaUTI);
+      ed.addEventListener('input', evoAtualizarDiaUTI);
+    }
+
+    // Carregar dados salvos
+    carregarFormulario();
+    evoCarregarTurnoAtual();
+
+    // Auto-copiar para evolução e ajustar cálculos
+    evoAutoFromAdmissao();
+    evoAtualizarDiaUTI();
+    evoApply();
+  });
+// ===== Evolução diária: helpers (não mexe na admissão) =====
+  function evoToggleBox(id, show) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (show) {
+      el.classList.remove('hidden');
+    } else {
+      // limpar campos internos
+      var inputs = el.querySelectorAll('input, textarea, select');
+      for (var i=0;i<inputs.length;i++) {
+        if (inputs[i].type === 'radio' || inputs[i].type === 'checkbox') inputs[i].checked = false;
+        else inputs[i].value = '';
+      }
+      // esconder doses se existirem
+      var doses = el.querySelectorAll('.dose-input');
+      for (var j=0;j<doses.length;j++) {
+        doses[j].classList.add('hidden');
+        doses[j].value = '';
+      }
+      el.classList.add('hidden');
+    }
+  }
+function evoToggleRespSuporte(valor) {
+    evoToggleBox('evo_resp_vm', false);
+    evoToggleBox('evo_resp_venturi', false);
+    evoToggleBox('evo_resp_cn', false);
+    evoToggleBox('evo_resp_mr', false);
+    if (valor === 'VM') evoToggleBox('evo_resp_vm', true);
+    if (valor === 'Venturi') evoToggleBox('evo_resp_venturi', true);
+    if (valor === 'CN') evoToggleBox('evo_resp_cn', true);
+    if (valor === 'MR') evoToggleBox('evo_resp_mr', true);
+  }
+
+  function evoToggleCulturas(valor) {
+    var wrapPos = byId('evo_cult_pos_wrap');
+    var wrapPend = byId('evo_cult_pend_wrap');
+    if (!wrapPos || !wrapPend) return;
+    
+    evoToggleBox('evo_cult_pos_wrap', valor === 'positivas');
+    evoToggleBox('evo_cult_pend_wrap', valor === 'pendentes');
+  }
+
+  function evoToggleDelirium(valor) {
+    evoToggleBox('evo_delirium_tipos', valor === 'sim');
+  }
+
+  function evoToggleAnalgesia(valor) {
+    evoToggleBox('evo_analgesia_lista', valor === 'sim');
+  }
+function evoCopiarIdentificacao() {
+    // usa a função já existente que copia dados da admissão para a evolução (v57+)
+    if (typeof evoAutoFromAdmissao === 'function') evoAutoFromAdmissao();
+    // garantir data/hora se estiver vazio
+    var area = document.getElementById('evolucaoArea');
+    if (area) {
+      var inp = area.querySelector('[name="evo_data"]');
+      if (inp && !inp.value && typeof nowLocalDatetimeValue === 'function') inp.value = nowLocalDatetimeValue();
+    }
+    if (typeof evoAtualizarDiaUTI === 'function') evoAtualizarDiaUTI();
+    if (typeof evoApply === 'function') evoApply();
+  }
+
+
+  // ===== Histórico de evoluções (localStorage) =====
+  function evoStorageKey() {
+    var adm = byId('datahora_admissao');
+    var base = (adm && adm.value) ? adm.value : 'sem_admissao';
+    return 'INTENSIVALE_EVOHIST_' + base;
+  }
+function evoGetHistory() {
+    try {
+      var raw = localStorage.getItem(evoStorageKey());
+      return raw ? JSON.parse(raw) : [];
+    } catch(e) { return []; }
+  }
+
+  function evoSetHistory(arr) {
+    try { localStorage.setItem(evoStorageKey(), JSON.stringify(arr)); } catch(e) {}
+  }
+
+  function evoCollectFields() {
+    var area = byId('evolucaoArea');
+    if (!area) return {};
+    var data = {};
+    var els = area.querySelectorAll('input, textarea, select');
+    for (var i=0;i<els.length;i++){
+      var el = els[i];
+      if (!el.name) continue;
+      if (el.type === 'radio') {
+        if (el.checked) data[el.name] = el.value;
+      } else if (el.type === 'checkbox') {
+        data[el.name] = !!el.checked;
+      } else {
+        data[el.name] = el.value;
+      }
+    }
+    return data;
+  }
+
+  function evoApplyFields(data) {
+    var area = byId('evolucaoArea');
+    if (!area || !data) return;
+var els = area.querySelectorAll('input, textarea, select');
+    for (var i=0;i<els.length;i++){
+      var el = els[i];
+      if (!el.name) continue;
+      if (!(el.name in data)) continue;
+
+      if (el.type === 'radio') {
+        el.checked = (data[el.name] === el.value);
+      } else if (el.type === 'checkbox') {
+        el.checked = !!data[el.name];
+      } else {
+        el.value = data[el.name] || '';
+      }
+    }
+
+    // re-aplicar toggles da evolução
+    try { evoApply(); } catch(e) {}
+  
+    try { evoUpdateBigHeader(); } catch(e) {}
+  }
+
+  function evoRenderHistory() {
+    var list = byId('evoHistoryList');
+    if (!list) return;
+
+    var hist = evoGetHistory();
+    if (!hist.length) {
+      list.innerHTML = '<div style="opacity:.75;">Nenhuma evolução salva ainda.</div>';
+      return;
+    }
+var html = '';
+    for (var i=0;i<hist.length;i++){
+      var item = hist[i];
+      var when = item.meta && item.meta.datahora ? item.meta.datahora : '(sem data/hora)';
+      var turno = item.meta && item.meta.turno ? item.meta.turno : '';
+      html += '<div class="evo-item">';
+      html += '  <div class="meta">' + when + (turno ? ' — ' + turno : '') + '<br><small>Evolução ' + (i+1) + '</small></div>';
+      html += '  <div class="actions">';
+      html += '    <button type="button" onclick="evoCarregarEvolucao(' + i + ')">Carregar</button>';
+      html += '    <button type="button" onclick="evoImprimirEvolucao(' + i + ')">Imprimir</button>';
+      html += '    <button type="button" onclick="evoExcluirEvolucao(' + i + ')" style="background:#fff;">Excluir</button>';
+      html += '  </div>';
+      html += '</div>';
+    }
+    list.innerHTML = html;
+  }
+function evoSalvarEvolucaoAtual() {
+    var data = evoCollectFields();
+    var turno = data.evo_turno || '';
+    var dh = data.evo_data || '';
+    var hist = evoGetHistory();
+    hist.push({ meta: { datahora: dh, turno: turno }, data: data });
+    evoSetHistory(hist);
+    evoRenderHistory();
+    
+    // IMPORTANTE: Também salvar em evolucao_last para os botões "Copiar da evolução anterior"
+    localStorage.setItem('evolucao_last', JSON.stringify(data));
+    
+    alert('Evolução salva no histórico.');
+  }
+function evoNovaEvolucao() {
+    if (!confirm('Iniciar nova evolução?\n\nOs dados da evolução atual serão salvos e os campos serão limpos (mantendo identificação, HPP, dispositivos, ATBs e nutrição).')) return;
+    
+    // Salvar evolução atual em evolucao_last antes de limpar
+    try {
+      var dataAtual = evoCollectFields();
+      if (dataAtual && Object.keys(dataAtual).length > 0) {
+        localStorage.setItem('evolucao_last', JSON.stringify(dataAtual));
+      }
+    } catch(e) {}
+
+    var area = document.getElementById('evolucaoArea');
+    if (!area) return;
+// LISTA DE CAMPOS QUE DEVEM SER MANTIDOS ENTRE EVOLUÇÕES
+    var manterCampos = [
+      // Identificação (readonly e copiados da admissão)
+      'evo_nome', 'evo_idade', 'evo_sexo', 'evo_peso', 'evo_altura', 'evo_imc', 'evo_pbw',
+      // HPP / Comorbidades / Alergias / Cirurgias
+      'evo_comorbidades', 'evo_baseline', 'evo_alergias', 'evo_cirurgias',
+      // Diagnóstico e Motivo (geralmente não mudam)
+      'evo_dx_principal', 'evo_motivo_uti',
+      // Problemas ativos (podem ser editados, mas geralmente se mantêm)
+      'evo_problemas',
+      // Dispositivos invasivos (importante manter)
+      'evo_cvc_local', 'evo_cvc_dia',
+      'evo_art_local', 'evo_art_dia',
+      'evo_hd_local', 'evo_hd_dia',
+      'evo_svd_dia', 'evo_tot_tqt_dia',
+      'evo_swanganz_local', 'evo_swanganz_dia',
+      'evo_bia', 'evo_bia_dia',
+      'evo_mp_transv', 'evo_mp_transv_dia',
+      'evo_drenos_outros',
+      // Antibióticos em uso (importante manter e ajustar dias)
+      'evo_inf_foco',
+      'evo_inf_atb1', 'evo_inf_dia_atb1', 'evo_inf_total_atb1',
+      'evo_inf_atb2', 'evo_inf_dia_atb2', 'evo_inf_total_atb2',
+      'evo_inf_atb3', 'evo_inf_dia_atb3', 'evo_inf_total_atb3',
+      // Nutrição (geralmente se mantém)
+      'evo_vet_kcal', 'evo_vet_prot', 'evo_dieta_select',
+      'evo_dieta_kcal_ml', 'evo_dieta_prot_ml', 'evo_dieta_mlh',
+      // Outros exames relevantes (importante manter)
+      'evo_outros_labs',
+      // Impressão clínica (às vezes útil manter como base)
+      'evo_impressao',
+      // Medicações em uso
+      'evo_meds'
+    ];
+// Limpar campos editáveis da evolução, EXCETO os que devem ser mantidos
+    var els = area.querySelectorAll('input, textarea, select');
+    for (var i=0;i<els.length;i++){
+      var el = els[i];
+      if (!el.name) continue;
+      if (el.hasAttribute('readonly')) continue;
+      if (el.name === 'evo_turno') continue;
+      
+      // Se o campo estiver na lista de manter, PULA (não limpa)
+      if (manterCampos.indexOf(el.name) !== -1) continue;
+
+      if (el.type === 'radio' || el.type === 'checkbox') el.checked = false;
+      else el.value = '';
+    }
+// Fechar todos os blocos condicionais
+    var toHide = [
+      'evo_resp_vm','evo_resp_venturi','evo_resp_cn','evo_resp_mr',
+      'evo_gaso_fields',
+      'evo_pocus_pulm_desc','evo_rx_torax_desc',
+      'evo_pocus_card_desc','evo_vexus_desc',
+      'evo_ecg_txt_wrap',
+      'evo_delirium_tipos','evo_analgesia_lista',
+      'evo_trs_tipo_wrap',
+      'evo_cult_pend_wrap','evo_cult_pos_wrap',
+      'evo_nefro_txt_wrap','evo_cg_txt_wrap','evo_ccv_txt_wrap','evo_vasc_txt_wrap',
+      'evo_estase_wrap', 'evo_hipo_wrap', 'evo_hiper_wrap'
+    ];
+    for (var k=0;k<toHide.length;k++) evoToggleBox(toHide[k], false);
+
+    // Data/hora automática
+    var inp = area.querySelector('[name="evo_data"]');
+    if (inp && typeof nowLocalDatetimeValue === 'function') inp.value = nowLocalDatetimeValue();
+
+    // Atualizar Dia de UTI
+    try { evoAtualizarDiaUTI(); } catch(e) {}
+    // Ir para o topo da evolução
+    try { area.scrollIntoView({behavior:'smooth', block:'start'}); } catch(e) { area.scrollIntoView(true); }
+  
+    try { evoUpdateBigHeader(); } catch(e) {}
+    
+    alert('Nova evolução iniciada! Dados importantes foram mantidos.');
+  }
+
+  function evoCarregarEvolucao(idx) {
+    var hist = evoGetHistory();
+    if (!hist[idx]) return;
+    evoApplyFields(hist[idx].data);
+  }
+
+  function evoExcluirEvolucao(idx) {
+    var hist = evoGetHistory();
+    if (!hist[idx]) return;
+    if (!confirm('Excluir esta evolução do histórico?')) return;
+    hist.splice(idx, 1);
+    evoSetHistory(hist);
+    evoRenderHistory();
+  }
+function evoImprimirEvolucaoAtual() {
+    // imprime usando o gerador de texto, se existir
+    var texto = '';
+    try { texto = gerarTextoEvolucao ? gerarTextoEvolucao() : ''; } catch(e) {}
+    if (!texto) {
+      // fallback: imprimir campos essenciais
+      var data = evoCollectFields();
+      texto = JSON.stringify(data, null, 2);
+    }
+    var w = window.open('', '_blank');
+    w.document.write('<pre style="white-space:pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; padding:20px;">' + 
+      texto.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>');
+    w.document.close();
+    w.focus();
+    w.print();
+  }
+function evoImprimirEvolucao(idx) {
+    var hist = evoGetHistory();
+    if (!hist[idx]) return;
+    var texto = '';
+    // tentar montar texto carregando temporariamente (sem mexer na tela)
+    texto = '';
+    try {
+      // se existir função geradora que usa DOM, carregamos, geramos e voltamos
+      var current = evoCollectFields();
+      evoApplyFields(hist[idx].data);
+      texto = gerarTextoEvolucao ? gerarTextoEvolucao() : '';
+      evoApplyFields(current);
+    } catch(e) {
+      texto = JSON.stringify(hist[idx].data, null, 2);
+    }
+    var w = window.open('', '_blank');
+    w.document.write('<pre style="white-space:pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; padding:20px;">' + 
+      texto.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>');
+    w.document.close();
+    w.focus();
+    w.print();
+  }
+function evoUpdateBigHeader() {
+    var area = document.getElementById('evolucaoArea');
+    if (!area) return;
+    var dh = area.querySelector('[name="evo_data"]');
+    var turno = area.querySelector('input[name="evo_turno"]:checked');
+    var txt = document.getElementById('evoBigHeaderText');
+    if (!txt) return;
+
+    var dhv = dh && dh.value ? dh.value : '';
+    // format datetime-local to dd/mm/yyyy hh:mm
+    var showDh = dhv;
+    try {
+      if (dhv && dhv.includes('T')) {
+        var d = new Date(dhv);
+        if (!isNaN(d.getTime())) {
+          var dd = String(d.getDate()).padStart(2,'0');
+          var mm = String(d.getMonth()+1).padStart(2,'0');
+          var yyyy = d.getFullYear();
+          var hh = String(d.getHours()).padStart(2,'0');
+          var mi = String(d.getMinutes()).padStart(2,'0');
+          showDh = dd + '/' + mm + '/' + yyyy + ' ' + hh + ':' + mi;
+        }
+      }
+    } catch(e) {}
+var t = turno ? turno.value : '';
+    var labelTurno = t ? (t === 'Diurna' ? 'Diurna' : (t === 'Noturna' ? 'Noturna' : t)) : '';
+    txt.textContent = (showDh ? showDh : 'Sem data/hora') + (labelTurno ? ' — ' + labelTurno : '');
+  }
+
+  function bindEvoHeaderLiveUpdate() {
+    if (window.__evoHeaderBound) return;
+    window.__evoHeaderBound = true;
+    document.addEventListener('change', function(e){
+      var t = e.target;
+      if (!t) return;
+      if (t.name === 'evo_data' || t.name === 'evo_turno') {
+        evoUpdateBigHeader();
+      }
+      // also update when loading/copying
+      if (t.name && t.name.startsWith('evo_')) {
+        // lightweight update for date/turno changes
+        if (t.name === 'evo_data') evoUpdateBigHeader();
+      }
+    }, true);
+  }
+function evoAutoFromAdmissao() {
+    // Copiar identificação completa + HPP/Alergias/Cirurgias/Medicações da admissão
+    function byName(n){ return document.querySelector('[name="'+n+'"]'); }
+    function vName(n){ var el = byName(n); return el ? (el.value || '') : ''; }
+
+    var area = byId('evolucaoArea');
+    if (!area) return;
+
+    function setByName(name, value){
+      var el = area.querySelector('[name="'+name+'"]');
+      if (el) el.value = value;
+    }
+
+    // Identificação
+    setByName('evo_nome', vName('nome'));
+    setByName('evo_idade', vName('idade'));
+    setByName('evo_sexo', vName('sexo'));
+    setByName('evo_peso', vName('peso'));
+    setByName('evo_altura', vName('altura')); // cm
+    setByName('evo_imc', vName('imc'));
+    var pbwVal = vName('peso_predito');
+    if (!pbwVal) {
+      var pbwEl = byId('pbw');
+      pbwVal = pbwEl ? (pbwEl.value || '') : '';
+    }
+    setByName('evo_pbw', pbwVal);
+// HPP / Alergias / Cirurgias / Medicações
+    setByName('evo_comorbidades', vName('hpp'));
+    setByName('evo_alergias', vName('alergias'));
+    setByName('evo_cirurgias', vName('cirurgias'));
+    setByName('evo_meds', vName('med_dom'));
+
+    try { evoCalcularTFGeClCr && evoCalcularTFGeClCr(); } catch(e) {}
+    try { evoUpdateBigHeader && evoUpdateBigHeader(); } catch(e) {}
+  }
+
+
+  // ===== Nutrição / GI (Evolução diária) =====
+  var EVO_DIETAS = [
+    { id: "fresubin_original", nome: "Fresubin Original (1,0 kcal/mL)", kcal_per_ml: 1.0, prot_per_ml: 0.038 },
+    { id: "fresubin_hp_energy", nome: "Fresubin HP Energy (1,5 kcal/mL)", kcal_per_ml: 1.5, prot_per_ml: 0.075 },
+    { id: "fresubin_2_hp", nome: "Fresubin 2.0 HP (2,0 kcal/mL)", kcal_per_ml: 2.0, prot_per_ml: 0.10 },
+
+    { id: "custom", nome: "Personalizada (preencher kcal/mL e prot/mL)", kcal_per_ml: 0, prot_per_ml: 0 }
+  ];
+function evoInitDietas() {
+    var sel = document.getElementById("evo_dieta_select");
+    if (!sel) return;
+
+    // evitar duplicar
+    if (sel.options && sel.options.length) return;
+
+    EVO_DIETAS.forEach(function(d) {
+      var opt = document.createElement("option");
+      opt.value = d.id;
+      opt.textContent = d.nome;
+      sel.appendChild(opt);
+    });
+
+    sel.addEventListener("change", function() {
+      var isCustom = sel.value === "custom";
+      evoToggleBox("evo_dieta_custom_wrap", isCustom);
+      evoRecalcNutricao();
+    });
+
+    evoToggleBox("evo_dieta_custom_wrap", sel.value === "custom");
+  }
+
+  function evoGetSelectedDieta() {
+    var sel = document.getElementById("evo_dieta_select");
+    if (!sel) return null;
+    for (var i = 0; i < EVO_DIETAS.length; i++) {
+      if (EVO_DIETAS[i].id === sel.value) return EVO_DIETAS[i];
+    }
+    return null;
+  }
+function evoNum(val) {
+    var n = parseFloat(String(val || "").replace(",", "."));
+    return isNaN(n) ? 0 : n;
+  }
+
+  function evoRecalcNutricao() {
+    var area = document.getElementById("evolucaoArea");
+    if (!area) return;
+
+    function g(name) {
+      var el = area.querySelector('[name="' + name + '"]');
+      return el ? el.value : "";
+    }
+    function s(name, value) {
+      var el = area.querySelector('[name="' + name + '"]');
+      if (el) el.value = value;
+    }
+
+    var vetKcal = evoNum(g("evo_vet_kcal"));
+    var vetProt = evoNum(g("evo_vet_prot"));
+    var mlh = evoNum(g("evo_dieta_mlh"));
+    var ml20 = mlh * 20;
+
+    s("evo_dieta_ml20", ml20 ? Math.round(ml20) : "");
+
+    var dieta = evoGetSelectedDieta();
+    var kcalML = 0, protML = 0;
+    if (dieta) {
+      if (dieta.id === "custom") {
+        kcalML = evoNum(g("evo_dieta_kcal_ml"));
+        protML = evoNum(g("evo_dieta_prot_ml"));
+      } else {
+        kcalML = dieta.kcal_per_ml;
+        protML = dieta.prot_per_ml;
+      }
+    }
+
+    var kcalAdmin = ml20 * kcalML;
+    var protAdmin = ml20 * protML;
+
+    var wheyProt = evoNum(g("evo_whey_prot_g"));
+    protAdmin = protAdmin + wheyProt;
+
+    s("evo_kcal_admin", kcalAdmin ? Math.round(kcalAdmin) : "");
+    s("evo_prot_admin", protAdmin ? Math.round(protAdmin) : "");
+
+    var pctK = (vetKcal > 0) ? (kcalAdmin / vetKcal) * 100 : 0;
+    var pctP = (vetProt > 0) ? (protAdmin / vetProt) * 100 : 0;
+
+    s("evo_pct_kcal", (vetKcal > 0 && kcalAdmin > 0) ? pctK.toFixed(1) : "");
+    s("evo_pct_prot", (vetProt > 0 && protAdmin > 0) ? pctP.toFixed(1) : "");
+  }
+function evoBindNutricao() {
+    var area = document.getElementById("evolucaoArea");
+    if (!area) return;
+
+    var names = [
+      "evo_vet_kcal", "evo_vet_prot",
+      "evo_dieta_mlh", "evo_dieta_kcal_ml", "evo_dieta_prot_ml",
+      "evo_whey_prot_g"
+    ];
+
+    names.forEach(function(n) {
+      var el = area.querySelector('[name="' + n + '"]');
+      if (!el) return;
+      el.addEventListener("input", evoRecalcNutricao);
+      el.addEventListener("change", evoRecalcNutricao);
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function() {
+    evoInitDietas();
+    evoBindNutricao();
+    evoRecalcNutricao();
+  });
+</script>
+
+<script>
+    // --- 1. FUNÇÃO: EVOLUÇÃO DIÁRIA (Turno Seguinte) ---
+    function iniciarEvolucaoDiaria() {
+        if(!confirm("Iniciar EVOLUÇÃO DIÁRIA?\n\nIsso manterá o cadastro, histórico e diagnósticos, limpando apenas os dados do momento (Sinais Vitais, Exames).")) return;
+// LISTA VIP: Tudo o que estiver aqui será MANTIDO.
+        // Coloquei variações de nomes comuns para garantir que não apague nada importante.
+        const manterDados = [
+            // Identificação
+            "nome", "idade", "data_nasc", "sexo", "genero", "leito", "prontuario", "registro", "atendimento", "data_admissao", "datahora_admissao", "box", "setor", "peso", "altura", "imc", "pbw", "peso_predito",
+            // Histórico (HPP) e Admissão
+            "motivo", "motivo_internacao", "queixa_principal", "evo_motivo_uti",
+            "hpp", "historico", "antecedentes",
+            "cirurgias", "cirurgias_previas",
+            "alergias", "alergias_check",
+            "med_uso", "medicacoes_casa", "medicacoes_previas",
+            // Diagnósticos e Impressão
+            "hd", "hd_principal", "diagnostico", "diagnosticos",
+            "impressao", "impressao_clinica", "conduta_fixa",
+            // Problemas atuais
+            "evo_problemas", "problemas_ativos",
+            // Exames complementares relevantes (admissão)
+            "ecg_admissao", "rx_torax_admissao", "pocus_admissao", "img_outros",
+            "exames_previos_relevantes", "lab_outros",
+            // Dispositivos Invasivos e Antibióticos (Geralmente continuam)
+            "inv_iot", "inv_tqt", "inv_cvc", "inv_svd", "inv_sne", "inv_pia", "inv_pam",
+            "atb_em_uso", "atb_dia", "data_inicio_atb",
+            // Nutrição (Muitas vezes a dieta se mantém)
+            "dieta_tipo", "via_alimentacao"
+        ];
+const inputs = document.querySelectorAll("input, textarea, select");
+
+        inputs.forEach(el => {
+            const nome = el.name; 
+            const id = el.id;
+
+            // 1. Se estiver na lista VIP, PULA (Não apaga)
+            if (manterDados.includes(nome) || manterDados.includes(id)) return;
+
+            // 2. Proteção extra para dispositivos (campos que começam com 'inv_')
+            if ((nome && nome.startsWith("inv_")) || (id && id.startsWith("inv_"))) return;
+
+            // 3. Se não for protegido, LIMPA
+            if (el.type === 'checkbox' || el.type === 'radio') {
+                el.checked = false;
+            } else {
+                el.value = "";
+            }
+            // Retorna selects para o primeiro item
+            if (el.tagName === 'SELECT') {
+                el.selectedIndex = 0;
+            }
+        });
+// Atualiza dias de internação
+        atualizarDiasInternacao();
+        
+        // Simula cliques para recalcular (IMC, Dietas, etc)
+        document.body.click(); 
+        
+        window.scrollTo(0, 0); 
+        alert("Pronto para Evolução Diária! Dados fixos preservados.");
+    }
+
+    // --- 2. CALCULAR DIAS AUTOMATICAMENTE ---
+    function atualizarDiasInternacao() {
+        const campoData = document.querySelector("input[name='data_admissao']") || document.getElementById("data_admissao");
+        // Tenta achar o campo alvo (pode ser dias_internacao, dias_uti, etc)
+        const campoDias = document.querySelector("input[name='dias_internacao']") || document.getElementById("dias_internacao") || document.querySelector("input[name='dias_uti']");
+if (campoData && campoData.value && campoDias) {
+            const dataAdm = new Date(campoData.value);
+            const hoje = new Date();
+            dataAdm.setHours(0,0,0,0);
+            hoje.setHours(0,0,0,0);
+            
+            // Diferença em dias
+            const diffDays = Math.ceil(Math.abs(hoje - dataAdm) / (1000 * 60 * 60 * 24)); 
+            campoDias.value = diffDays; 
+        }
+    }
+// --- 3. SALVAR E HISTÓRICO ---
+    function salvarEvolucao() {
+        const nomePct = document.getElementsByName("nome")[0]?.value || "Paciente";
+        const idUnico = "evo_" + new Date().getTime();
+        
+        const inputs = document.querySelectorAll("input, textarea, select");
+        let conteudo = {};
+        
+        inputs.forEach(el => {
+            // Ignorar seletores de CTI e Leito
+            if (el.id === 'seletorCTI' || el.id === 'seletorLeito') return;
+            
+            const chave = el.name || el.id;
+            if(!chave) return;
+            if (el.type === 'checkbox' || el.type === 'radio') {
+                if (el.checked) conteudo[chave + '::' + el.value] = true;
+                // Também salvar o valor do radio/checkbox de forma simples
+                if (el.checked && el.type === 'radio') conteudo[chave] = el.value;
+            } else {
+                conteudo[chave] = el.value;
+            }
+        });
+// Usar prefixo do leito atual
+        const idUnicoLeito = "evo_" + ctiAtual + "
