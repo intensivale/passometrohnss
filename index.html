@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8"/>
@@ -60,8 +59,7 @@
       padding: 5px;
       font-size: 13px;
     }
-
-    button{
+button{
       padding: 10px 16px;
       font-size: 15px;
       border: 1px solid #777;
@@ -89,8 +87,7 @@
         align-items: center;
     }
     #evoHistoryList h4 { margin: 10px 0 5px; }
-
-    /* --- ESTILO DE IMPRESSÃO (O SEGREDO MÁGICO) --- */
+/* --- ESTILO DE IMPRESSÃO (O SEGREDO MÁGICO) --- */
     @media print {
       /* Esconde botões, áreas de controle e títulos de seção desnecessários */
       button, .no-print, #evoHistoryList, .section h3, #status_save, #status_evo_save {
@@ -117,8 +114,7 @@
         text-indent: 1px;
         text-overflow: '';
       }
-
-      /* Expande textareas para mostrar todo o texto sem barra de rolagem */
+/* Expande textareas para mostrar todo o texto sem barra de rolagem */
       textarea {
         height: auto;
         overflow: visible;
@@ -145,8 +141,7 @@
         background-color: white !important;
       }
     }
-
-    /* --- ESTILOS DO SISTEMA DE LOGIN --- */
+/* --- ESTILOS DO SISTEMA DE LOGIN --- */
     #loginOverlay {
       position: fixed;
       top: 0;
@@ -253,1789 +248,82 @@
     .sync-pending { background: #fff9c4; color: #f57f17; }
 </style>
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<!-- Firebase SDKs (MODIFICADO) -->
+<script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-analytics.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js"; // Adicionado para autenticação
+    import { getFirestore, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js"; // Adicionado para Firestore e serverTimestamp
 
-<script>
-// Configuração do Firebase
-const firebaseConfig = {
-  apiKey: "AIzaSyB8y0yNlR9bwCGDcuRcFfdp-ez_Kzvt0E4",
-  authDomain: "passometrouti-a3188.firebaseapp.com",
-  projectId: "passometrouti-a3188",
-  storageBucket: "passometrouti-a3188.firebasestorage.app",
-  messagingSenderId: "992219356914",
-  appId: "1:992219356914:web:e5a94b90f193002d5dba6b"
-};
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyB7Mt4NsiXOam36i5MgClhKa-IOimlQ4DE",
+        authDomain: "gestaoutihnss.firebaseapp.com",
+        projectId: "gestaoutihnss",
+        storageBucket: "gestaoutihnss.firebasestorage.app",
+        messagingSenderId: "664272211913",
+        appId: "1:664272211913:web:66e30e6670126b3e51a218",
+        measurementId: "G-K0ZB5KLRGY"
+    };
 
-// Inicializar Firebase
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-// Variáveis globais de autenticação
-let currentUser = null;
-let isAdmin = false;
+    // Expondo 'auth', 'db', 'serverTimestamp' e variáveis de estado para o escopo global
+    // para que funções externas (que não são módulos) possam acessá-los.
+    window.auth = auth;
+    window.db = db;
+    window.serverTimestamp = serverTimestamp;
+    window.currentUser = null;
+    window.isAdmin = false;
+
+    // Listener de mudança de autenticação (MOVIDO PARA DENTRO DO MÓDULO E ADAPTADO)
+    auth.onAuthStateChanged(function(user) {
+        if (user) {
+            window.currentUser = user; // Atualiza a variável global
+            
+            db.collection('usuarios').doc(user.uid).get()
+                .then(function(doc) {
+                    if (doc.exists) {
+                        window.isAdmin = doc.data().admin === true; // Atualiza a variável global
+                        var nome = doc.data().nome || user.email;
+                        mostrarSistema(nome);
+                    } else {
+                        // Criar registro de usuário se não existir
+                        db.collection('usuarios').doc(user.uid).set({
+                            email: user.email,
+                            nome: user.email.split('@')[0],
+                            admin: false,
+                            criadoEm: serverTimestamp() // Usa a função serverTimestamp importada
+                        });
+                        window.isAdmin = false; // Atualiza a variável global
+                        mostrarSistema(user.email);
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Erro ao buscar usuário:', error);
+                    mostrarSistema(user.email);
+                });
+        } else {
+            window.currentUser = null;
+            window.isAdmin = false;
+            document.getElementById('loginOverlay').style.display = 'flex';
+            document.getElementById('mainContent').style.display = 'none';
+        }
+    });
 </script>
 
-</head>
-<body>
-
-<!-- TELA DE LOGIN -->
-<div id="loginOverlay">
-  <div id="loginBox">
-    <div style="display: flex; justify-content: center; align-items: center; gap: 30px; margin-bottom: 20px;">
-      <img src="img/HNSS.jpg" alt="Hospital Nossa Senhora da Saúde" style="height: 80px;">
-      <img src="img/intensivale.jpeg" alt="Intensivale" style="height: 70px;">
-    </div>
-    <h1>🏥 PassômetroUTI</h1>
-    <h3>Sistema de Evolução CTI</h3>
-    <input type="email" id="loginEmail" placeholder="E-mail" autocomplete="email">
-    <input type="password" id="loginPassword" placeholder="Senha" autocomplete="current-password">
-    <button onclick="fazerLogin()">Entrar</button>
-    <div id="loginError"></div>
-    <p style="margin-top: 20px; font-size: 12px; color: #999;">
-      Acesso restrito a usuários autorizados
-    </p>
-  </div>
-</div>
-<!-- CONTEÚDO PRINCIPAL (inicialmente oculto) -->
-<div id="mainContent" style="display: none;">
-
-<!-- SELETOR DE CTI E LEITO -->
-<div class="section no-print" id="seletorLeitoSection" style="background: linear-gradient(135deg, #1565c0, #0d47a1); border: none; padding: 20px; margin-bottom: 30px;">
-<div class="row nowrap" style="justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">
-<div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-    <div style="color: white; font-size: 18px; font-weight: bold;">🏥</div>
-    <label style="min-width: auto;">
-        <span style="color: white; font-weight: bold;">CTI:</span>
-        <select id="seletorCTI" onchange="atualizarLeitos()" style="font-size: 16px; padding: 10px 15px; font-weight: bold; min-width: 120px;">
-            <option value="CTI1">CTI 1</option>
-            <option value="CTI2">CTI 2</option>
-        </select>
-    </label>
-    <label style="min-width: auto;">
-        <span style="color: white; font-weight: bold;">Leito:</span>
-        <select id="seletorLeito" onchange="trocarLeito()" style="font-size: 16px; padding: 10px 15px; font-weight: bold; min-width: 100px;">
-        </select>
-    </label>
-    <div id="statusLeito" style="color: #a5d6a7; font-size: 14px;"></div>
-    <div id="diasInternacao" style="color: #ffeb3b; font-size: 14px; font-weight: bold;"></div>
-    <span id="syncStatus" class="sync-status sync-ok">✓ Sincronizado</span>
-</div>
-<div id="userInfoDisplay" style="color: white; font-size: 13px; display: flex; align-items: center; gap: 10px;">
-</div>
-</div>
-<div class="row nowrap" style="justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
-<button onclick="verResumoCTI()" type="button" style="background: #26a69a; color: white; font-weight: bold; padding: 10px 20px;">
-    📊 Resumo CTI
-</button>
-<button onclick="darAlta()" type="button" style="background: #ff5722; color: white; font-weight: bold; padding: 10px 20px;">
-    🏠 Dar Alta
-</button>
-<button onclick="verAltas()" type="button" style="background: #78909c; color: white; padding: 10px 20px;">
-    📋 Ver Altas
-</button>
-<button onclick="verUsuarios()" type="button" class="admin-only" style="background: #7b1fa2; color: white; padding: 10px 20px;">
-    👥 Usuários
-</button>
-</div>
-</div>
-
-<!-- Cabeçalho com Logos -->
-<div class="no-print" style="display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto 20px auto; padding: 10px 20px;">
-  <img src="img/intensivale.jpeg" alt="Intensivale" style="height: 60px;">
-  <h1 id="tituloLeito" style="margin: 0; flex: 1; text-align: center;">Admissão CTI Adulto</h1>
-  <img src="data:image/jpeg;base64,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" alt="Intensivale" style="height: 55px;">
-</div>
-
-<!-- SEÇÃO DE ADMISSÃO (colapsável) -->
-<div id="admissaoWrapper">
-<!-- Barra de controle da admissão -->
-<div id="admissaoHeader" class="section no-print" style="background: #e3f2fd; border: 2px solid #1565c0; margin-bottom: 0; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center; padding: 12px 20px;">
-<div style="display: flex; align-items: center; gap: 15px;">
-    <h3 style="margin: 0; color: #1565c0;">📋 Dados de Admissão</h3>
-    <span id="admissaoResumo" style="color: #666; font-size: 14px;"></span>
-</div>
-<div style="display: flex; gap: 10px;">
-    <button type="button" onclick="salvarAdmissao()" style="background: #4caf50; color: white; font-weight: bold;">💾 Salvar Admissão</button>
-    <button type="button" onclick="novaEvolucaoRapida()" style="background: #ff9800; color: white; font-weight: bold;">📝 Nova Evolução</button>
-    <button type="button" id="btnToggleAdmissao" onclick="toggleAdmissao()" style="background: #1565c0; color: white;">🔽 Recolher</button>
-</div>
-</div>
-
-<!-- Conteúdo da admissão -->
-<div id="admissaoConteudo">
-<!-- Identificação -->
-<div class="section" style="margin-top: 0; border-radius: 0;">
-<h3>Identificação do Paciente</h3>
-<div class="row nowrap">
-<label style="flex: 3; min-width: 420px;">Nome:
-      <input name="nome" style="width: 100%;" type="text"/>
-</label>
-<label style="width: 70px; min-width: 70px;">Idade:
-      <input id="idade" name="idade" style="width: 100%;" type="number"/>
-</label>
-<label style="width: 110px; min-width: 110px;">Sexo:
-      <select id="sexo" name="sexo" onchange="calcularPBW()" style="width: 100%;">
-<option value="">Selecione</option>
-<option value="M">Masculino</option>
-<option value="F">Feminino</option>
-</select>
-</label>
-<label style="min-width: 260px;">Data/hora admissão:
-      <input id="datahora_admissao" name="datahora_admissao" type="datetime-local"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 170px;">Peso (kg):
-      <input id="peso" name="peso" oninput="calcularIMC(); calcularPBW();" type="number"/>
-</label>
-<label style="min-width: 170px;">Altura (cm):
-      <input id="altura" name="altura" oninput="calcularIMC(); calcularPBW();" type="number"/>
-</label>
-<label style="min-width: 170px;">IMC:
-      <input id="imc" name="imc" readonly="" type="text"/>
-</label>
-<label style="min-width: 220px;">Peso Predito (PBW):
-      <input id="pbw" name="peso_predito" readonly="" type="text"/>
-</label>
-</div>
-</div>
-<!-- História clínica -->
-<div class="section">
-<h3>História Clínica</h3>
-<div class="row">
-<label style="flex: 1; min-width: 100%;">HMA (História da Moléstia Atual):
-      <textarea name="hma" rows="6"></textarea>
-</label>
-</div>
-<div class="row">
-<label style="flex: 1; min-width: 100%;">HPP (História Patológica Pregressa):
-      <textarea name="hpp" rows="6"></textarea>
-</label>
-</div>
-<!-- Cirurgias prévias fica abaixo do HPP -->
-<div class="row">
-<label style="flex: 1; min-width: 100%;">Cirurgias prévias:
-      <textarea name="cirurgias" rows="4"></textarea>
-</label>
-</div>
-<div class="row">
-<label style="flex: 1; min-width: 100%;">Medicações de uso domiciliar:
-      <textarea name="med_dom" rows="4"></textarea>
-</label>
-</div>
-<!-- Alergias: tudo na mesma linha; textarea aparece só se Sim -->
-<div class="row nowrap" style="align-items: flex-start;">
-<div style="min-width: 90px; margin-top: 6px;">Alergias:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="alergias_check" onclick="toggleAlergiaCampo(true)" type="radio" value="sim"/> Sim
-    </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="alergias_check" onclick="toggleAlergiaCampo(false)" type="radio" value="nao"/> Não
-    </label>
-<div class="hidden" id="campoAlergia" style="flex: 1;">
-<textarea name="alergias" rows="2" style="width: 100%;"></textarea>
-</div>
-</div>
-</div>
-<!-- Exames de imagem: deve vir abaixo do campo alergias (quadro separado) -->
-<div class="section">
-<h3>Exames de Imagem (Admissão)</h3>
-<div class="row">
-<label style="flex: 1; min-width: 100%;">ECG admissão:
-      <textarea name="ecg_admissao" rows="3"></textarea>
-</label>
-</div>
-<div class="row">
-<label style="flex: 1; min-width: 100%;">Rx tórax admissão:
-      <textarea name="rx_torax_admissao" rows="3"></textarea>
-</label>
-</div>
-<div class="row">
-<label style="flex: 1; min-width: 100%;">POCUS admissão:
-      <textarea name="pocus_admissao" rows="3"></textarea>
-</label>
-</div>
-<div class="row">
-<label style="flex: 1; min-width: 100%;">Outros relevantes:
-      <textarea name="img_outros" rows="3"></textarea>
-</label>
-</div>
-</div>
-<!-- Laboratório -->
-<div class="section">
-<h3>Laboratório (Admissão)</h3>
-<div class="row nowrap">
-<label style="min-width: 180px;">Hemoglobina:
-      <input name="hb" type="text"/>
-</label>
-<label style="min-width: 180px;">Leucócitos:
-      <input name="leuco" type="text"/>
-</label>
-<label style="min-width: 180px;">Plaquetas:
-      <input name="plaquetas" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 180px;">Ureia:
-      <input name="ureia" type="text"/>
-</label>
-<label style="min-width: 180px;">Creatinina:
-      <input name="creatinina" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 160px;">Na+:
-      <input name="na" type="text"/>
-</label>
-<label style="min-width: 160px;">K+:
-      <input name="k" type="text"/>
-</label>
-<label style="min-width: 160px;">Mg++:
-      <input name="mg" type="text"/>
-</label>
-<label style="min-width: 160px;">Ca++:
-      <input name="ca" type="text"/>
-</label>
-<label style="min-width: 160px;">Fósforo:
-      <input name="fosforo" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 180px;">INR:
-      <input name="inr" type="text"/>
-</label>
-<label style="min-width: 180px;">PTT:
-      <input name="ptt" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 180px;">BT:
-      <input name="bt" type="text"/>
-</label>
-<label style="min-width: 180px;">BD:
-      <input name="bd" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 180px;">TGO:
-      <input name="tgo" type="text"/>
-</label>
-<label style="min-width: 180px;">TGP:
-      <input name="tgp" type="text"/>
-</label>
-</div>
-<div class="row">
-<label style="flex: 1; min-width: 100%;">Outros relevantes:
-      <textarea name="lab_outros" rows="4"></textarea>
-</label>
-</div>
-</div>
-<!-- Exames prévios relevantes -->
-<div class="section">
-<h3>Exames Prévios Relevantes</h3>
-<div class="row">
-<label style="flex: 1; min-width: 100%;">Exames prévios relevantes:
-      <textarea name="exames_previos_relevantes" rows="4"></textarea>
-</label>
-</div>
-</div>
-<!-- Exame físico -->
-<div class="section">
-<h3>Exame Físico</h3>
-<div class="row">
-<label style="flex: 1; min-width: 100%;">Exame físico:
-      <textarea name="exame_fisico" rows="8"></textarea>
-</label>
-</div>
-</div>
-<!-- Respiratório -->
-<div class="section">
-<h3>Respiratório</h3>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 90px;">Suporte:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="resp_suporte" onclick="toggleResp('Ar ambiente')" type="radio" value="Ar ambiente"/> Ar ambiente
-    </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="resp_suporte" onclick="toggleResp('VM')" type="radio" value="VM"/> VM
-    </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="resp_suporte" onclick="toggleResp('Venturi')" type="radio" value="Venturi"/> Venturi
-    </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="resp_suporte" onclick="toggleResp('CN')" type="radio" value="CN"/> CN
-    </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="resp_suporte" onclick="toggleResp('MR')" type="radio" value="MR"/> MR
-    </label>
-<!-- Campos específicos aparecem à direita conforme seleção -->
-<div class="hidden" id="resp_venturi" style="flex: 1;">
-<div class="row nowrap" style="margin: 0;">
-<label style="min-width: 220px;">FiO2 (Venturi):
-          <input name="venturi_fio2" type="text"/>
-</label>
-</div>
-</div>
-<div class="hidden" id="resp_cn" style="flex: 1;">
-<div class="row nowrap" style="margin: 0;">
-<label style="min-width: 220px;">Litros (CN):
-          <input name="cn_litros" type="text"/>
-</label>
-</div>
-</div>
-<div class="hidden" id="resp_mr" style="flex: 1;">
-<div class="row nowrap" style="margin: 0;">
-<label style="min-width: 220px;">Litros (MR):
-          <input name="mr_litros" type="text"/>
-</label>
-</div>
-</div>
-</div>
-<!-- VM: campos detalhados -->
-<div class="hidden" id="resp_vm">
-<div class="row nowrap">
-<label style="min-width: 240px;">Modo ventilatório:
-        <input name="vm_modo" type="text"/>
-</label>
-<label style="min-width: 180px;">Pinsp/PS:
-        <input name="vm_pinsp_ps" type="text"/>
-</label>
-<label style="min-width: 160px;">VC:
-        <input name="vm_vc" type="text"/>
-</label>
-<label style="min-width: 160px;">FR:
-        <input name="vm_fr" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 160px;">PEEP:
-        <input name="vm_peep" type="text"/>
-</label>
-<label style="min-width: 160px;">FiO2:
-        <input name="vm_fio2" type="text"/>
-</label>
-<label style="min-width: 160px;">Ppico:
-        <input name="vm_ppico" type="text"/>
-</label>
-<label style="min-width: 160px;">Pplatô:
-        <input name="vm_pplato" type="text"/>
-</label>
-<label style="min-width: 200px;">Drive Pressure:
-        <input name="vm_drive" type="text"/>
-</label>
-</div>
-</div>
-<div class="row nowrap" style="align-items: center;">
-<label style="flex-direction: row; align-items: center; gap: 10px; min-width: 360px;">
-<input id="chk_gaso" onclick="toggleGasometria()" type="checkbox"/> Última gasometria relevante (preencher)
-    </label>
-</div>
-<div class="hidden" id="gaso_fields">
-<div class="row nowrap">
-<label style="min-width: 120px;">pH:
-        <input name="gas_ph" type="text"/>
-</label>
-<label style="min-width: 120px;">pO2:
-        <input name="gas_po2" type="text"/>
-</label>
-<label style="min-width: 120px;">pCO2:
-        <input name="gas_pco2" type="text"/>
-</label>
-<label style="min-width: 140px;">HCO3:
-        <input name="gas_hco3" type="text"/>
-</label>
-<label style="min-width: 120px;">BE:
-        <input name="gas_be" type="text"/>
-</label>
-<label style="min-width: 120px;">sO2:
-        <input name="gas_so2" type="text"/>
-</label>
-</div>
-</div>
-</div>
-<!-- Hemodinâmica -->
-<div class="section">
-<h3>Hemodinâmica</h3>
-<div class="row">
-<label style="flex: 1; min-width: 100%;">Ritmo no monitor:
-      <input name="hemo_ritmo" style="width: 100%;" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 180px;">PA:
-      <input name="hemo_pa" type="text"/>
-</label>
-<label style="min-width: 180px;">FC:
-      <input name="hemo_fc" type="text"/>
-</label>
-<label style="min-width: 180px;">SpO2:
-      <input name="hemo_spo2" type="text"/>
-</label>
-</div>
-<div class="row" style="align-items: center;">
-<div style="min-width: 260px;">Vasoativos / Inotrópicos:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 160px;">
-<input id="chk_dobutamina" onclick="toggleHemoDrug('dobutamina')" type="checkbox"/> Dobutamina
-    </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 160px;">
-<input id="chk_milrinona" onclick="toggleHemoDrug('milrinona')" type="checkbox"/> Milrinona
-    </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 190px;">
-<input id="chk_noradrenalina" onclick="toggleHemoDrug('noradrenalina')" type="checkbox"/> Noradrenalina
-    </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 170px;">
-<input id="chk_vasopressina" onclick="toggleHemoDrug('vasopressina')" type="checkbox"/> Vasopressina
-    </label>
-</div>
-<div class="row hidden" id="drug_dobutamina">
-<label style="flex: 1; min-width: 100%;">Dobutamina (dose / observações):
-      <input name="dobutamina_dose" style="width: 100%;" type="text"/>
-</label>
-</div>
-<div class="row hidden" id="drug_milrinona">
-<label style="flex: 1; min-width: 100%;">Milrinona (dose / observações):
-      <input name="milrinona_dose" style="width: 100%;" type="text"/>
-</label>
-</div>
-<div class="row hidden" id="drug_noradrenalina">
-<label style="flex: 1; min-width: 100%;">Noradrenalina (dose / observações):
-      <input name="noradrenalina_dose" style="width: 100%;" type="text"/>
-</label>
-</div>
-<div class="row hidden" id="drug_vasopressina">
-<label style="flex: 1; min-width: 100%;">Vasopressina (dose / observações):
-      <input name="vasopressina_dose" style="width: 100%;" type="text"/>
-</label>
-</div>
-<div class="row" style="align-items: center;">
-<div style="min-width: 120px;">Perfusão:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 150px;">
-<input id="chk_perf" onclick="togglePerfusao()" type="checkbox"/> Preencher
-    </label>
-<div class="hidden" id="perf_fields" style="flex: 1;">
-<div class="row nowrap" style="margin: 0;">
-<label style="min-width: 180px;">Lactato:
-          <input name="perf_lactato" type="text"/>
-</label>
-<label style="min-width: 180px;">SvcO2:
-          <input name="perf_svco2" type="text"/>
-</label>
-<label style="min-width: 180px;">GapCO2:
-          <input name="perf_gapco2" type="text"/>
-</label>
-</div>
-</div>
-</div>
-</div>
-<!-- Infecção -->
-<div class="section">
-<h3>Infecção</h3>
-<div class="row">
-<label style="flex: 1; min-width: 100%;">Foco provável/confirmado:
-      <input name="inf_foco" style="width: 100%;" type="text"/>
-</label>
-</div>
-<div class="row nowrap" style="align-items: flex-end;">
-<label style="flex: 2; min-width: 380px;">Antimicrobiano 1:
-      <input name="inf_atb1" placeholder="Ex: Piperacilina-tazobactam" style="width: 100%;" type="text"/>
-</label>
-<label style="min-width: 140px;">D:
-      <input name="inf_dia_atb1" placeholder="ex: 3" style="width: 100%;" type="number"/>
-</label>
-<div style="min-width: 50px; padding-bottom: 8px;">de</div>
-<label style="min-width: 140px;">:
-      <input name="inf_total_atb1" placeholder="ex: 7" style="width: 100%;" type="number"/>
-</label>
-</div>
-<div class="row nowrap" style="align-items: flex-end;">
-<label style="flex: 2; min-width: 380px;">Antimicrobiano 2:
-      <input name="inf_atb2" placeholder="(opcional)" style="width: 100%;" type="text"/>
-</label>
-<label style="min-width: 140px;">D:
-      <input name="inf_dia_atb2" style="width: 100%;" type="number"/>
-</label>
-<div style="min-width: 50px; padding-bottom: 8px;">de</div>
-<label style="min-width: 140px;">:
-      <input name="inf_total_atb2" style="width: 100%;" type="number"/>
-</label>
-</div>
-<div class="row nowrap" style="align-items: flex-end;">
-<label style="flex: 2; min-width: 380px;">Antimicrobiano 3:
-      <input name="inf_atb3" placeholder="(opcional)" style="width: 100%;" type="text"/>
-</label>
-<label style="min-width: 140px;">D:
-      <input name="inf_dia_atb3" style="width: 100%;" type="number"/>
-</label>
-<div style="min-width: 50px; padding-bottom: 8px;">de</div>
-<label style="min-width: 140px;">:
-      <input name="inf_total_atb3" style="width: 100%;" type="number"/>
-</label>
-</div>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 170px;">Culturas coletadas?</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="inf_culturas" onclick="toggleCulturas(true)" type="radio" value="sim"/> Sim
-    </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="inf_culturas" onclick="toggleCulturas(false)" type="radio" value="nao"/> Não
-    </label>
-<div class="hidden" id="culturas_sim" style="flex: 1;">
-<div class="row nowrap" style="margin: 0; gap: 14px;">
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 140px;">
-<input name="cult_urina" type="checkbox"/> Urina
-        </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 160px;">
-<input name="cult_hemo" type="checkbox"/> Hemocultura
-        </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 220px;">
-<input name="cult_traqueal" type="checkbox"/> Secreção traqueal
-        </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 120px;">
-<input id="cult_outros_chk" name="cult_outros_chk" onclick="toggleCultOutros()" type="checkbox"/> Outros
-        </label>
-<div class="hidden" id="cult_outros_txt_wrap" style="flex: 1;">
-<input name="cult_outros_txt" placeholder="Quais?" style="width: 100%;" type="text"/>
-</div>
-</div>
-</div>
-<div class="hidden" id="culturas_nao" style="flex: 1;">
-<input name="culturas_motivo" placeholder="Motivo de não ter sido coletado" style="width: 100%;" type="text"/>
-</div>
-</div>
-</div>
-<!-- Neuro / Dor / Sedação / Delirium -->
-<div class="section">
-<h3>Neuro / Dor / Sedação / Delirium</h3>
-<div class="row nowrap" style="align-items: flex-end;">
-<div style="min-width: 210px; padding-bottom: 8px;">Escala de Glasgow:</div>
-<label style="min-width: 90px;">AO
-      <input id="glasgow_ao" min="0" name="glasgow_ao" oninput="calcGlasgow()" type="number"/>
-</label>
-<label style="min-width: 90px;">RV
-      <input id="glasgow_rv" min="0" name="glasgow_rv" oninput="calcGlasgow()" type="number"/>
-</label>
-<label style="min-width: 90px;">RM
-      <input id="glasgow_rm" min="0" name="glasgow_rm" oninput="calcGlasgow()" type="number"/>
-</label>
-<label style="min-width: 140px;">Total
-      <input id="glasgow_total" name="glasgow_total" readonly="" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 200px;">RASS atual:
-      <input name="rass_atual" type="text"/>
-</label>
-</div>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 120px;">Delirium:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="delirium" onclick="toggleDelirium(true)" type="radio" value="sim"/> Sim
-    </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="delirium" onclick="toggleDelirium(false)" type="radio" value="nao"/> Não
-    </label>
-<div class="hidden" id="delirium_tipos" style="display: flex; align-items: center; gap: 16px; margin-left: 10px;">
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input id="del_hiper" name="del_hiper" type="checkbox"/> Hiperativo
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input id="del_hipo" name="del_hipo" type="checkbox"/> Hipoativo
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input id="del_misto" name="del_misto" type="checkbox"/> Misto
-      </label>
-</div>
-</div>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 260px;">Analgesia / sedação em uso:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="analg_sed" onclick="toggleAnalgesia(true)" type="radio" value="sim"/> Sim
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="analg_sed" onclick="toggleAnalgesia(false)" type="radio" value="nao"/> Não
-      </label>
-<div class="hidden" id="analgesia_lista" style="flex: 1;">
-<div class="row" style="margin: 0; gap: 14px; flex-wrap: wrap;">
-<div class="med-item">
-<input id="med_dipirona" name="med_dipirona" onclick="toggleDose('med_dipirona','dose_med_dipirona')" type="checkbox"/>
-<span>Dipirona</span>
-<input class="dose-input hidden" id="dose_med_dipirona" name="dose_med_dipirona" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="med_tramadol" name="med_tramadol" onclick="toggleDose('med_tramadol','dose_med_tramadol')" type="checkbox"/>
-<span>Tramadol</span>
-<input class="dose-input hidden" id="dose_med_tramadol" name="dose_med_tramadol" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="med_tylex" name="med_tylex" onclick="toggleDose('med_tylex','dose_med_tylex')" type="checkbox"/>
-<span>Tylex</span>
-<input class="dose-input hidden" id="dose_med_tylex" name="dose_med_tylex" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="med_metadona" name="med_metadona" onclick="toggleDose('med_metadona','dose_med_metadona')" type="checkbox"/>
-<span>Metadona</span>
-<input class="dose-input hidden" id="dose_med_metadona" name="dose_med_metadona" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="med_diazepam" name="med_diazepam" onclick="toggleDose('med_diazepam','dose_med_diazepam')" type="checkbox"/>
-<span>Diazepam</span>
-<input class="dose-input hidden" id="dose_med_diazepam" name="dose_med_diazepam" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="med_clonazepam" name="med_clonazepam" onclick="toggleDose('med_clonazepam','dose_med_clonazepam')" type="checkbox"/>
-<span>Clonazepam</span>
-<input class="dose-input hidden" id="dose_med_clonazepam" name="dose_med_clonazepam" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="med_quetiapina" name="med_quetiapina" onclick="toggleDose('med_quetiapina','dose_med_quetiapina')" type="checkbox"/>
-<span>Quetiapina</span>
-<input class="dose-input hidden" id="dose_med_quetiapina" name="dose_med_quetiapina" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="med_risperidona" name="med_risperidona" onclick="toggleDose('med_risperidona','dose_med_risperidona')" type="checkbox"/>
-<span>Risperidona</span>
-<input class="dose-input hidden" id="dose_med_risperidona" name="dose_med_risperidona" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="med_ketamina" name="med_ketamina" onclick="toggleDose('med_ketamina','dose_med_ketamina')" type="checkbox"/>
-<span>Ketamina</span>
-<input class="dose-input hidden" id="dose_med_ketamina" name="dose_med_ketamina" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="med_midazolam" name="med_midazolam" onclick="toggleDose('med_midazolam','dose_med_midazolam')" type="checkbox"/>
-<span>Midazolam</span>
-<input class="dose-input hidden" id="dose_med_midazolam" name="dose_med_midazolam" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="med_fentanil" name="med_fentanil" onclick="toggleDose('med_fentanil','dose_med_fentanil')" type="checkbox"/>
-<span>Fentanil</span>
-<input class="dose-input hidden" id="dose_med_fentanil" name="dose_med_fentanil" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="med_remifentanil" name="med_remifentanil" onclick="toggleDose('med_remifentanil','dose_med_remifentanil')" type="checkbox"/>
-<span>Remifentanil</span>
-<input class="dose-input hidden" id="dose_med_remifentanil" name="dose_med_remifentanil" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="med_precedex" name="med_precedex" onclick="toggleDose('med_precedex','dose_med_precedex')" type="checkbox"/>
-<span>Precedex</span>
-<input class="dose-input hidden" id="dose_med_precedex" name="dose_med_precedex" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="med_propofol" name="med_propofol" onclick="toggleDose('med_propofol','dose_med_propofol')" type="checkbox"/>
-<span>Propofol</span>
-<input class="dose-input hidden" id="dose_med_propofol" name="dose_med_propofol" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="med_rocuronio" name="med_rocuronio" onclick="toggleDose('med_rocuronio','dose_med_rocuronio')" type="checkbox"/>
-<span>Rocurônio</span>
-<input class="dose-input hidden" id="dose_med_rocuronio" name="dose_med_rocuronio" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="med_cisatracurio" name="med_cisatracurio" onclick="toggleDose('med_cisatracurio','dose_med_cisatracurio')" type="checkbox"/>
-<span>Cisatracúrio</span>
-<input class="dose-input hidden" id="dose_med_cisatracurio" name="dose_med_cisatracurio" placeholder="dose" type="text"/>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- Invasivos / Dispositivos -->
-<div class="section">
-<h3>Invasivos / Dispositivos</h3>
-<div class="row nowrap">
-<label style="min-width: 260px;">CVC (local):
-      <input name="cvc_local" type="text"/>
-</label>
-<label style="min-width: 140px;">Dia:
-      <input name="cvc_dia" placeholder="ex: D2 / 12/01" type="text"/>
-</label>
-<label style="min-width: 260px;">Cateter arterial (local):
-      <input name="art_local" type="text"/>
-</label>
-<label style="min-width: 140px;">Dia:
-      <input name="art_dia" placeholder="ex: D1 / 12/01" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 260px;">Cateter de HD (local):
-      <input name="hd_local" type="text"/>
-</label>
-<label style="min-width: 140px;">Dia:
-      <input name="hd_dia" placeholder="ex: D1 / 12/01" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 220px;">SVD (dia):
-      <input name="svd_dia" placeholder="ex: D3 / 12/01" type="text"/>
-</label>
-<label style="min-width: 220px;">TOT/TQT (dia):
-      <input name="tot_tqt_dia" placeholder="ex: D5 / 12/01" type="text"/>
-</label>
-</div>
-<div class="row">
-<label style="flex: 1; min-width: 100%;">Drenos / outros:
-      <textarea name="drenos_outros" rows="3"></textarea>
-</label>
-</div>
-</div>
-<!-- Plano / Metas -->
-<div class="section">
-<h3>Plano / Metas</h3>
-<div class="row">
-<label style="flex: 1; min-width: 100%;">Diagnóstico(s) de internação:
-      <textarea name="diagnostico_internacao" rows="3"></textarea>
-</label>
-</div>
-<div class="row">
-<label style="flex: 1; min-width: 100%;">Plano / metas:
-      <textarea name="plano_metas" rows="6"></textarea>
-</label>
-</div>
-</div>
-<!-- Ações -->
-<div class="section">
-<h3>Ações</h3>
-<div class="row nowrap" style="justify-content: flex-start; gap: 14px;">
-<button onclick="gerarTexto()" type="button">Transformar em texto</button>
-<span id="status_save" style="margin-left: 10px; color: #0b6;"> </span>
-</div>
-<!-- Painel: Texto para copiar (não bloqueia a página) -->
-<div class="section hidden" id="painelTexto">
-<h3 style="margin-top: 0;">Texto para copiar</h3>
-<div class="row">
-<textarea id="textoGerado" rows="16" style="width: 100%;"></textarea>
-</div>
-<div class="row nowrap" style="justify-content: flex-end; gap: 10px;">
-<button onclick="copiarTexto()" type="button">Copiar</button>
-<button onclick="fecharPainelTexto()" type="button">Fechar</button>
-</div>
-</div>
-</div><!-- Fecha seção Ações -->
-</div><!-- Fecha admissaoConteudo -->
-</div><!-- Fecha admissaoWrapper -->
-
-<!-- ===== Evolução diária (Diurna/Noturna) ===== -->
-<div class="section divider" id="divisor-adm-evo"><h3>Evolução diária</h3></div>
-<div class="section hidden" id="evolucaoArea">
-<h3 style="margin-top: 0;">Evolução diária</h3>
-<div class="row nowrap" style="align-items: center; gap: 14px;">
-<div style="min-width: 80px;">Turno:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_turno" type="radio" value="Diurna"/> Diurna
-    </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_turno" type="radio" value="Noturna"/> Noturna
-    </label>
-<label style="margin-left: 18px; flex-direction: row; align-items: center; gap: 8px; min-width: 220px;">
-      Data/hora: <input name="evo_data" type="datetime-local"/>
-</label>
-<div style="flex: 1;"></div>
-<button onclick="fecharEvolucao()" type="button">Fechar</button>
-</div>
-<div class="row nowrap" style="gap: 10px;">
-<span id="status_evo_save" style="margin-left: 10px; color: #0b6;"></span>
-</div>
-<!-- Cabeçalho -->
-<div class="row nowrap">
-<label style="flex: 1; min-width: 420px;">Nome:
-      <input name="evo_nome" readonly="" type="text"/>
-</label>
-<label style="min-width: 140px;">Idade:
-      <input name="evo_idade" readonly="" type="text"/>
-</label>
-<label style="min-width: 140px;">Sexo:
-      <input name="evo_sexo" readonly="" type="text"/>
-</label>
-<label style="min-width: 150px;">Dia de UTI:
-      <input name="evo_dia_uti" readonly="" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 200px;">Peso (kg):
-      <input name="evo_peso" readonly="" type="text"/>
-</label>
-<label style="min-width: 220px;">Altura (cm):
-      <input name="evo_altura" readonly="" type="text"/>
-</label>
-<label style="min-width: 200px;">IMC:
-      <input name="evo_imc" readonly="" type="text"/>
-</label>
-<label style="min-width: 240px;">Peso ideal (PBW, kg):
-      <input name="evo_pbw" readonly="" type="text"/>
-</label>
-</div>
-<div class="section">
-<h3>Motivo da internação na UTI</h3>
-<div class="row">
-<textarea name="evo_motivo_uti" rows="3" style="width: 100%;"></textarea>
-</div>
-</div>
-<!-- Problemas ativos -->
-<div class="section">
-<h3>Problemas atuais</h3>
-<div class="row nowrap" style="justify-content: flex-end;">
-</div>
-<div class="row">
-<textarea name="evo_problemas" rows="5" style="width: 100%;"></textarea>
-</div>
-</div>
-<!-- HPP -->
-<div class="section">
-<h3>HPP (História Patológica Pregressa)</h3>
-<div class="row">
-<label style="flex: 1; min-width: 100%;">Comorbidades relevantes:
-        <textarea name="evo_comorbidades" rows="3"></textarea>
-</label>
-</div>
-<div class="row">
-<label style="flex: 1; min-width: 100%;">Cirurgias prévias:
-        <textarea name="evo_cirurgias" rows="3"></textarea>
-</label>
-</div>
-<h3>Medicações em uso</h3>
-<div class="row">
-<textarea name="evo_meds" style="width:100%; height:130px;"></textarea>
-</div>
-<div class="row" style="margin-top: 14px;">
-<label style="flex: 1; min-width: 100%;">Alergias:
-        <textarea name="evo_alergias" rows="2"></textarea>
-</label>
-</div>
-</div>
-<!-- Ectoscopia -->
-<div class="section">
-<h3>Ectoscopia</h3>
-<div class="row">
-<textarea name="evo_ectoscopia" rows="3" style="width: 100%;"></textarea>
-</div>
-</div>
-<!-- Respiratório -->
-<div class="section">
-<h3>Respiratório</h3>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 90px;">Suporte:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_resp_suporte" onclick="evoToggleRespSuporte('Ar ambiente')" type="radio" value="Ar ambiente"/> Ar ambiente
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_resp_suporte" onclick="evoToggleRespSuporte('VM')" type="radio" value="VM"/> VM
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_resp_suporte" onclick="evoToggleRespSuporte('Venturi')" type="radio" value="Venturi"/> Venturi
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_resp_suporte" onclick="evoToggleRespSuporte('CN')" type="radio" value="CN"/> CN
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_resp_suporte" onclick="evoToggleRespSuporte('MR')" type="radio" value="MR"/> MR
-      </label>
-<div style="flex: 1;"></div>
-</div>
-<div class="hidden" id="evo_resp_vm">
-<div class="row nowrap">
-<label style="min-width: 240px;">Modo ventilatório:
-          <input name="evo_vm_modo" type="text"/>
-</label>
-<label style="min-width: 180px;">Pinsp/PS:
-          <input name="evo_vm_pinsp_ps" type="text"/>
-</label>
-<label style="min-width: 160px;">VC:
-          <input name="evo_vm_vc" type="text"/>
-</label>
-<label style="min-width: 160px;">FR:
-          <input name="evo_vm_fr" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 160px;">PEEP:
-          <input name="evo_vm_peep" type="text"/>
-</label>
-<label style="min-width: 160px;">FiO2:
-          <input name="evo_vm_fio2" type="text"/>
-</label>
-<label style="min-width: 160px;">Ppico:
-          <input name="evo_vm_ppico" type="text"/>
-</label>
-<label style="min-width: 160px;">Pplatô:
-          <input name="evo_vm_pplato" type="text"/>
-</label>
-<label style="min-width: 200px;">Drive Pressure:
-          <input name="evo_vm_drive" type="text"/>
-</label>
-</div>
-</div>
-<div class="hidden" id="evo_resp_venturi">
-<div class="row nowrap">
-<label style="min-width: 220px;">FiO2 (Venturi):
-          <input name="evo_venturi_fio2" type="text"/>
-</label>
-</div>
-</div>
-<div class="hidden" id="evo_resp_cn">
-<div class="row nowrap">
-<label style="min-width: 220px;">Litros (CN):
-          <input name="evo_cn_litros" type="text"/>
-</label>
-</div>
-</div>
-<div class="hidden" id="evo_resp_mr">
-<div class="row nowrap">
-<label style="min-width: 220px;">Litros (MR):
-          <input name="evo_mr_litros" type="text"/>
-</label>
-</div>
-</div>
-<div class="row nowrap" style="align-items: center;">
-<label style="flex-direction: row; align-items: center; gap: 10px; min-width: 360px;">
-<input id="evo_gaso_check" onclick="evoToggleBox('evo_gaso_fields', this.checked)" type="checkbox"/> Última gasometria relevante (preencher)
-      </label>
-</div>
-<div class="hidden" id="evo_gaso_fields">
-<div class="row nowrap">
-<label style="min-width: 120px;">pH:
-          <input name="evo_gas_ph" type="text"/>
-</label>
-<label style="min-width: 120px;">pO2:
-          <input name="evo_gas_po2" type="text"/>
-</label>
-<label style="min-width: 120px;">pCO2:
-          <input name="evo_gas_pco2" type="text"/>
-</label>
-<label style="min-width: 140px;">HCO3:
-          <input name="evo_gas_hco3" type="text"/>
-</label>
-<label style="min-width: 120px;">BE:
-          <input name="evo_gas_be" type="text"/>
-</label>
-<label style="min-width: 120px;">sO2:
-          <input name="evo_gas_so2" type="text"/>
-</label>
-</div>
-</div>
-<div class="row">
-<label style="width: 100%;">Ausculta pulmonar:
-        <input name="evo_ausculta_pulm" type="text"/>
-</label>
-</div>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 220px;">POCUS pulmonar do dia:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="evo_pocus_pulm" onclick="evoToggleBox('evo_pocus_pulm_desc', true)" type="radio" value="sim"/> Sim
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="evo_pocus_pulm" onclick="evoToggleBox('evo_pocus_pulm_desc', false)" type="radio" value="nao"/> Não
-      </label>
-</div>
-<div class="hidden" id="evo_pocus_pulm_desc" style="margin-top: 6px;">
-<textarea name="evo_pocus_pulm_texto" placeholder="Descrição do POCUS pulmonar" rows="2" style="width: 100%;"></textarea>
-</div>
-<div class="row nowrap" style="align-items: center; margin-top: 10px;">
-<div style="min-width: 220px;">Rx tórax do dia:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="evo_rx_torax" onclick="evoToggleBox('evo_rx_torax_desc', true)" type="radio" value="sim"/> Sim
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="evo_rx_torax" onclick="evoToggleBox('evo_rx_torax_desc', false)" type="radio" value="nao"/> Não
-      </label>
-</div>
-<div class="hidden" id="evo_rx_torax_desc" style="margin-top: 6px;">
-<textarea name="evo_rx_torax_texto" placeholder="Descrição do Rx de tórax" rows="2" style="width: 100%;"></textarea>
-</div>
-</div>
-<!-- Hemodinâmica -->
-<div class="section">
-<h3>Hemodinâmica</h3>
-<div class="row nowrap">
-<label style="min-width: 260px;">Ritmo no monitor:
-        <input name="evo_hemo_ritmo" type="text"/>
-</label>
-<label style="min-width: 180px;">PA:
-        <input name="evo_hemo_pa" type="text"/>
-</label>
-<label style="min-width: 140px;">FC:
-        <input name="evo_hemo_fc" type="text"/>
-</label>
-<label style="min-width: 160px;">SpO2:
-        <input name="evo_hemo_spo2" type="text"/>
-</label>
-</div>
-<div class="row" style="align-items: center; gap: 10px;">
-<div style="min-width: 260px;">Vasoativos/Inotrópicos:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input id="evo_chk_dobutamina" onclick="evoToggleHemoDrug('dobutamina')" type="checkbox"/> Dobutamina
-      </label>
-<div class="hidden" id="evo_drug_dobutamina" style="min-width: 220px;">
-<input name="evo_dobutamina_dose" placeholder="dose" type="text"/>
-</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input id="evo_chk_milrinona" onclick="evoToggleHemoDrug('milrinona')" type="checkbox"/> Milrinona
-      </label>
-<div class="hidden" id="evo_drug_milrinona" style="min-width: 220px;">
-<input name="evo_milrinona_dose" placeholder="dose" type="text"/>
-</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input id="evo_chk_noradrenalina" onclick="evoToggleHemoDrug('noradrenalina')" type="checkbox"/> Noradrenalina
-      </label>
-<div class="hidden" id="evo_drug_noradrenalina" style="min-width: 220px;">
-<input name="evo_noradrenalina_dose" placeholder="dose" type="text"/>
-</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input id="evo_chk_vasopressina" onclick="evoToggleHemoDrug('vasopressina')" type="checkbox"/> Vasopressina
-      </label>
-<div class="hidden" id="evo_drug_vasopressina" style="min-width: 220px;">
-<input name="evo_vasopressina_dose" placeholder="dose" type="text"/>
-</div>
-</div>
-<div class="row nowrap" style="align-items: center;">
-<label style="flex-direction: row; align-items: center; gap: 10px; min-width: 240px;">
-<input id="evo_chk_perf" onclick="evoTogglePerfusao()" type="checkbox"/> Perfusão (preencher)
-      </label>
-</div>
-<div class="hidden" id="evo_perf_fields">
-<div class="row nowrap">
-<label style="min-width: 170px;">Lactato:
-          <input name="evo_perf_lactato" type="text"/>
-</label>
-<label style="min-width: 170px;">SvcO2:
-          <input name="evo_perf_svco2" type="text"/>
-</label>
-<label style="min-width: 170px;">GapCO2:
-          <input name="evo_perf_gapco2" type="text"/>
-</label>
-</div>
-</div>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 140px;">ECG do dia:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_ecg_dia" onclick="evoToggleBox('evo_ecg_txt_wrap', true)" type="radio" value="sim"/> Sim
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_ecg_dia" onclick="evoToggleBox('evo_ecg_txt_wrap', false)" type="radio" value="nao"/> Não
-      </label>
-</div>
-<div class="hidden" id="evo_ecg_txt_wrap" style="flex: 1;">
-<textarea name="evo_ecg_txt" placeholder="Descrever ECG do dia" rows="2" style="width: 100%;"></textarea>
-</div>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 220px;">POCUS cardíaco do dia:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="evo_pocus_card" onclick="evoToggleBox('evo_pocus_card_desc', true)" type="radio" value="sim"/> Sim
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="evo_pocus_card" onclick="evoToggleBox('evo_pocus_card_desc', false)" type="radio" value="nao"/> Não
-      </label>
-</div>
-<div class="hidden" id="evo_pocus_card_desc" style="margin-top: 6px;">
-<textarea name="evo_pocus_card_texto" placeholder="Descrição do POCUS cardíaco" rows="2" style="width: 100%;"></textarea>
-</div>
-<div class="row nowrap" style="align-items: center; margin-top: 10px;">
-<div style="min-width: 220px;">VExUS do dia:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="evo_vexus" onclick="evoToggleBox('evo_vexus_desc', true)" type="radio" value="sim"/> Sim
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="evo_vexus" onclick="evoToggleBox('evo_vexus_desc', false)" type="radio" value="nao"/> Não
-      </label>
-</div>
-<div class="hidden" id="evo_vexus_desc" style="margin-top: 6px;">
-<textarea name="evo_vexus_texto" placeholder="Descrição do VExUS" rows="2" style="width: 100%;"></textarea>
-</div>
-<!-- Swan Ganz -->
-<div class="row nowrap" style="align-items: center; margin-top: 10px;">
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_swanganz_check" type="checkbox" onclick="toggleHemoExtra('swanganz')"/> Swan Ganz
-</label>
-</div>
-<div class="hidden" id="evo_swanganz_wrap" style="margin-top: 6px;">
-<div class="row nowrap" style="flex-wrap: wrap; gap: 10px;">
-<label style="min-width: 120px;">IC:
-      <input name="evo_swan_ic" type="text" placeholder="L/min/m²"/>
-</label>
-<label style="min-width: 120px;">PAPm:
-      <input name="evo_swan_papm" type="text" placeholder="mmHg"/>
-</label>
-<label style="min-width: 120px;">PVC:
-      <input name="evo_swan_pvc" type="text" placeholder="mmHg"/>
-</label>
-<label style="min-width: 120px;">PAOP:
-      <input name="evo_swan_paop" type="text" placeholder="mmHg"/>
-</label>
-<label style="min-width: 140px;">IRVS:
-      <input name="evo_swan_irvs" type="text" placeholder="dyn·s/cm⁵/m²"/>
-</label>
-</div>
-</div>
-<!-- Marcapasso -->
-<div class="row nowrap" style="align-items: center; margin-top: 10px;">
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_marcapasso_check" type="checkbox" onclick="toggleHemoExtra('marcapasso')"/> Marcapasso
-</label>
-</div>
-<div class="hidden" id="evo_marcapasso_wrap" style="margin-top: 6px;">
-<div class="row nowrap" style="flex-wrap: wrap; gap: 10px;">
-<label style="min-width: 140px;">Undersense:
-      <input name="evo_mp_undersense" type="text" placeholder="sim/não"/>
-</label>
-<label style="min-width: 180px;">Falha de captura:
-      <input name="evo_mp_falha_captura" type="text" placeholder="sim/não"/>
-</label>
-<label style="min-width: 140px;">Output:
-      <input name="evo_mp_output" type="text" placeholder="mA"/>
-</label>
-<label style="min-width: 140px;">Sense:
-      <input name="evo_mp_sense" type="text" placeholder="mV"/>
-</label>
-</div>
-</div>
-<!-- esCCO -->
-<div class="row nowrap" style="align-items: center; margin-top: 10px;">
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_escco_check" type="checkbox" onclick="toggleHemoExtra('escco')"/> esCCO
-</label>
-</div>
-<div class="hidden" id="evo_escco_wrap" style="margin-top: 6px;">
-<div class="row nowrap" style="flex-wrap: wrap; gap: 10px;">
-<label style="min-width: 140px;">esCCI:
-      <input name="evo_escco_escci" type="text" placeholder="L/min/m²"/>
-</label>
-<label style="min-width: 140px;">IRVS:
-      <input name="evo_escco_irvs" type="text" placeholder="dyn·s/cm⁵/m²"/>
-</label>
-</div>
-</div>
-</div>
-<!-- Renal / Metabólico -->
-<div class="section">
-<h3>Renal / Metabólico</h3>
-<div class="row nowrap" style="align-items:center; gap:14px; flex-wrap:wrap;">
-<div style="min-width: 260px; font-weight: 700;">Período (BH/Diurese):</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_renal_periodo" onclick="evoSetRenalPeriodo(12)" type="radio" value="12"/> 12h
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_renal_periodo" onclick="evoSetRenalPeriodo(24)" type="radio" value="24"/> 24h
-      </label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 240px;"><span id="evo_bh_label">BH 24h</span> (mL):
-        <input name="evo_bh_ml" type="text"/>
-</label>
-<label style="min-width: 240px;"><span id="evo_diurese_label">Diurese 24h</span> (mL):
-        <input name="evo_diurese_ml" type="text"/>
-</label>
-<label style="min-width: 220px;">Ureia:
-        <input name="evo_ureia" type="text"/>
-</label>
-<label style="min-width: 220px;">Creatinina:
-        <input name="evo_creatinina" oninput="evoCalcularTFGeClCr()" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 260px;">TFG CKD-EPI (mL/min/1,73m²):
-            <input name="evo_tfg_ckd_epi" readonly="" type="text"/>
-</label>
-<label style="min-width: 260px;">ClCr Cockcroft-Gault (mL/min):
-            <input name="evo_clcr_cg" readonly="" type="text"/>
-</label>
-</div>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 260px;">Terapia renal substitutiva:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_trs" onclick="evoToggleBox('evo_trs_tipo_wrap', false)" type="radio" value="nao"/> Não
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_trs" onclick="evoToggleBox('evo_trs_tipo_wrap', true)" type="radio" value="sim"/> Sim
-      </label>
-<div class="hidden" id="evo_trs_tipo_wrap" style="flex: 1;">
-<input name="evo_trs_tipo" placeholder="tipo de TRS" type="text"/>
-</div>
-</div>
-<div class="row nowrap">
-<label style="min-width: 160px;">Na:
-        <input name="evo_na" type="text"/>
-</label>
-<label style="min-width: 160px;">K:
-        <input name="evo_k" type="text"/>
-</label>
-<label style="min-width: 160px;">Ca++:
-        <input name="evo_ca" type="text"/>
-</label>
-<label style="min-width: 160px;">Mg++:
-        <input name="evo_mg" type="text"/>
-</label>
-<label style="min-width: 160px;">Fósforo:
-        <input name="evo_fosforo" type="text"/>
-</label>
-</div>
-</div>
-<!-- Infecção -->
-<div class="section">
-<h3>Infecção</h3>
-<div class="row">
-<label style="flex: 1; min-width: 100%;">Foco provável/confirmado:
-        <input name="evo_inf_foco" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="flex: 1;">Antimicrobiano 1:
-        <input name="evo_inf_atb1" type="text"/>
-</label>
-<label style="min-width: 150px;">D:
-        <input name="evo_inf_dia_atb1" type="text"/>
-</label>
-<label style="min-width: 190px;">de:
-        <input name="evo_inf_total_atb1" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="flex: 1;">Antimicrobiano 2:
-        <input name="evo_inf_atb2" type="text"/>
-</label>
-<label style="min-width: 150px;">D:
-        <input name="evo_inf_dia_atb2" type="text"/>
-</label>
-<label style="min-width: 190px;">de:
-        <input name="evo_inf_total_atb2" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="flex: 1;">Antimicrobiano 3:
-        <input name="evo_inf_atb3" type="text"/>
-</label>
-<label style="min-width: 150px;">D:
-        <input name="evo_inf_dia_atb3" type="text"/>
-</label>
-<label style="min-width: 190px;">de:
-        <input name="evo_inf_total_atb3" type="text"/>
-</label>
-</div>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 120px;">Culturas:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_culturas" onclick="evoToggleCulturas('pendentes')" type="radio" value="pendentes"/> Pendentes
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_culturas" onclick="evoToggleCulturas('negativas')" type="radio" value="negativas"/> Negativas
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_culturas" onclick="evoToggleCulturas('positivas')" type="radio" value="positivas"/> Positivas
-      </label>
-<div class="hidden" id="evo_cult_pend_wrap" style="flex: 1;"><input name="evo_cult_pend_data" placeholder="data/hora da coleta (pendentes)" style="width: 100%;" type="text"/></div>
-<div class="hidden" id="evo_cult_pos_wrap" style="flex: 1;">
-<input name="evo_cult_pos_txt" placeholder="descrever culturas positivas" type="text"/>
-</div>
-</div>
-<div class="row nowrap">
-<label style="min-width: 220px;">Leucócitos:
-        <input name="evo_leuco" type="text"/>
-</label>
-<label style="min-width: 220px;">PCR:
-        <input name="evo_pcr" type="text"/>
-</label>
-<label style="min-width: 240px;">Procalcitonina:
-        <input name="evo_pct" type="text"/>
-</label>
-<label style="min-width: 220px;">Data:
-        <input name="evo_pct_data" type="text"/>
-</label>
-</div>
-</div>
-<!-- Neuro / Sedação -->
-<div class="section">
-<h3>Neuro / Dor / Sedação / Delirium</h3>
-<div class="row nowrap" style="align-items: flex-end;">
-<div style="min-width: 210px; padding-bottom: 8px;">Escala de Glasgow:</div>
-<label style="min-width: 90px;">AO
-        <input id="evo_glasgow_ao" min="0" name="evo_glasgow_ao" oninput="evoCalcGlasgow()" type="number"/>
-</label>
-<label style="min-width: 90px;">RV
-        <input id="evo_glasgow_rv" min="0" name="evo_glasgow_rv" oninput="evoCalcGlasgow()" type="number"/>
-</label>
-<label style="min-width: 90px;">RM
-        <input id="evo_glasgow_rm" min="0" name="evo_glasgow_rm" oninput="evoCalcGlasgow()" type="number"/>
-</label>
-<label style="min-width: 140px;">Total
-        <input id="evo_glasgow_total" name="evo_glasgow_total" readonly="" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 200px;">RASS atual:
-        <input name="evo_rass_atual" type="text"/>
-</label>
-</div>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 120px;">Delirium:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="evo_delirium" onclick="evoToggleBox('evo_delirium_tipos', true)" type="radio" value="sim"/> Sim
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="evo_delirium" onclick="evoToggleBox('evo_delirium_tipos', false)" type="radio" value="nao"/> Não
-      </label>
-</div>
-<div class="hidden" id="evo_delirium_tipos" style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 16px;">
-<label style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 16px;">
-<input id="evo_del_hiper" name="evo_del_hiper" type="checkbox"/> Hiperativo
-        </label>
-<label style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 16px;">
-<input id="evo_del_hipo" name="evo_del_hipo" type="checkbox"/> Hipoativo
-        </label>
-<label style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 16px;">
-<input id="evo_del_misto" name="evo_del_misto" type="checkbox"/> Misto
-        </label>
-</div>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 260px;">Analgesia / sedação em uso:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="evo_analg_sed" onclick="evoToggleBox('evo_analgesia_lista', true)" type="radio" value="sim"/> Sim
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="evo_analg_sed" onclick="evoToggleBox('evo_analgesia_lista', false)" type="radio" value="nao"/> Não
-      </label>
-</div>
-<div class="hidden" id="evo_analgesia_lista" style="margin-top: 8px;">
-<div class="row" style="margin: 0; gap: 14px; flex-wrap: wrap;">
-<div class="med-item">
-<input id="evo_med_dipirona" name="evo_med_dipirona" onclick="toggleDose('evo_med_dipirona','dose_evo_med_dipirona')" type="checkbox"/>
-<span>Dipirona</span>
-<input class="dose-input hidden" id="dose_evo_med_dipirona" name="dose_evo_med_dipirona" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="evo_med_tramadol" name="evo_med_tramadol" onclick="toggleDose('evo_med_tramadol','dose_evo_med_tramadol')" type="checkbox"/>
-<span>Tramadol</span>
-<input class="dose-input hidden" id="dose_evo_med_tramadol" name="dose_evo_med_tramadol" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="evo_med_tylex" name="evo_med_tylex" onclick="toggleDose('evo_med_tylex','dose_evo_med_tylex')" type="checkbox"/>
-<span>Tylex</span>
-<input class="dose-input hidden" id="dose_evo_med_tylex" name="dose_evo_med_tylex" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="evo_med_metadona" name="evo_med_metadona" onclick="toggleDose('evo_med_metadona','dose_evo_med_metadona')" type="checkbox"/>
-<span>Metadona</span>
-<input class="dose-input hidden" id="dose_evo_med_metadona" name="dose_evo_med_metadona" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="evo_med_diazepam" name="evo_med_diazepam" onclick="toggleDose('evo_med_diazepam','dose_evo_med_diazepam')" type="checkbox"/>
-<span>Diazepam</span>
-<input class="dose-input hidden" id="dose_evo_med_diazepam" name="dose_evo_med_diazepam" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="evo_med_clonazepam" name="evo_med_clonazepam" onclick="toggleDose('evo_med_clonazepam','dose_evo_med_clonazepam')" type="checkbox"/>
-<span>Clonazepam</span>
-<input class="dose-input hidden" id="dose_evo_med_clonazepam" name="dose_evo_med_clonazepam" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="evo_med_quetiapina" name="evo_med_quetiapina" onclick="toggleDose('evo_med_quetiapina','dose_evo_med_quetiapina')" type="checkbox"/>
-<span>Quetiapina</span>
-<input class="dose-input hidden" id="dose_evo_med_quetiapina" name="dose_evo_med_quetiapina" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="evo_med_risperidona" name="evo_med_risperidona" onclick="toggleDose('evo_med_risperidona','dose_evo_med_risperidona')" type="checkbox"/>
-<span>Risperidona</span>
-<input class="dose-input hidden" id="dose_evo_med_risperidona" name="dose_evo_med_risperidona" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="evo_med_ketamina" name="evo_med_ketamina" onclick="toggleDose('evo_med_ketamina','dose_evo_med_ketamina')" type="checkbox"/>
-<span>Ketamina</span>
-<input class="dose-input hidden" id="dose_evo_med_ketamina" name="dose_evo_med_ketamina" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="evo_med_midazolam" name="evo_med_midazolam" onclick="toggleDose('evo_med_midazolam','dose_evo_med_midazolam')" type="checkbox"/>
-<span>Midazolam</span>
-<input class="dose-input hidden" id="dose_evo_med_midazolam" name="dose_evo_med_midazolam" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="evo_med_fentanil" name="evo_med_fentanil" onclick="toggleDose('evo_med_fentanil','dose_evo_med_fentanil')" type="checkbox"/>
-<span>Fentanil</span>
-<input class="dose-input hidden" id="dose_evo_med_fentanil" name="dose_evo_med_fentanil" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="evo_med_remifentanil" name="evo_med_remifentanil" onclick="toggleDose('evo_med_remifentanil','dose_evo_med_remifentanil')" type="checkbox"/>
-<span>Remifentanil</span>
-<input class="dose-input hidden" id="dose_evo_med_remifentanil" name="dose_evo_med_remifentanil" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="evo_med_precedex" name="evo_med_precedex" onclick="toggleDose('evo_med_precedex','dose_evo_med_precedex')" type="checkbox"/>
-<span>Precedex</span>
-<input class="dose-input hidden" id="dose_evo_med_precedex" name="dose_evo_med_precedex" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="evo_med_propofol" name="evo_med_propofol" onclick="toggleDose('evo_med_propofol','dose_evo_med_propofol')" type="checkbox"/>
-<span>Propofol</span>
-<input class="dose-input hidden" id="dose_evo_med_propofol" name="dose_evo_med_propofol" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="evo_med_rocuronio" name="evo_med_rocuronio" onclick="toggleDose('evo_med_rocuronio','dose_evo_med_rocuronio')" type="checkbox"/>
-<span>Rocurônio</span>
-<input class="dose-input hidden" id="dose_evo_med_rocuronio" name="dose_evo_med_rocuronio" placeholder="dose" type="text"/>
-</div>
-<div class="med-item">
-<input id="evo_med_cisatracurio" name="evo_med_cisatracurio" onclick="toggleDose('evo_med_cisatracurio','dose_evo_med_cisatracurio')" type="checkbox"/>
-<span>Cisatracúrio</span>
-<input class="dose-input hidden" id="dose_evo_med_cisatracurio" name="dose_evo_med_cisatracurio" placeholder="dose" type="text"/>
-</div>
-</div>
-</div>
-<!-- Exame Neurológico -->
-<div class="row" style="margin-top: 15px;">
-<label style="flex: 1; min-width: 100%;">Exame Neurológico:
-      <textarea name="evo_exame_neuro" rows="3" placeholder="Pupilas, força muscular, reflexos, sensibilidade..."></textarea>
-</label>
-</div>
-<!-- Doppler cerebral -->
-<div class="row nowrap" style="align-items: center; margin-top: 10px;">
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_doppler_check" type="checkbox" onclick="toggleNeuroExtra('doppler')"/> Doppler cerebral
-</label>
-</div>
-<div class="hidden" id="evo_doppler_wrap" style="margin-top: 6px;">
-<label style="flex: 1; min-width: 100%;">
-      <textarea name="evo_doppler_desc" rows="2" placeholder="Descreva os achados do Doppler cerebral..."></textarea>
-</label>
-</div>
-<!-- Brain4care -->
-<div class="row nowrap" style="align-items: center; margin-top: 10px;">
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_brain4care_check" type="checkbox" onclick="toggleNeuroExtra('brain4care')"/> Brain4care
-</label>
-</div>
-<div class="hidden" id="evo_brain4care_wrap" style="margin-top: 6px;">
-<label style="flex: 1; min-width: 100%;">
-      <textarea name="evo_brain4care_desc" rows="2" placeholder="Descreva os dados do Brain4care..."></textarea>
-</label>
-</div>
-</div>
-<!-- Hematológico / Trombose -->
-<div class="section">
-<h3>Hematológico / Trombose</h3>
-<div class="row nowrap">
-<label style="min-width: 220px;">Hb:
-        <input name="evo_hb" type="text"/>
-</label>
-<label style="min-width: 220px;">Plaquetas:
-        <input name="evo_plaquetas" type="text"/>
-</label>
-<label style="min-width: 220px;">INR:
-        <input name="evo_inr" type="text"/>
-</label>
-<label style="min-width: 220px;">PTT:
-        <input name="evo_ptt" type="text"/>
-</label>
-</div>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 140px;">Profilaxia TEV:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_tev" type="radio" value="sim"/> Sim
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_tev" type="radio" value="nao"/> Não
-      </label>
-<div class="hidden" id="evo_tev_just_wrap" style="flex: 1;">
-<input name="evo_tev_just" placeholder="justificativa se não" type="text"/>
-</div>
-</div>
-<!-- Transfusões -->
-<div class="row nowrap" style="align-items: flex-start; margin-top: 10px;">
-<div style="min-width: 100px; margin-top: 6px;">Transfusões:</div>
-<div style="display: flex; flex-wrap: wrap; gap: 15px;">
-<label style="flex-direction: row; align-items: center; gap: 5px; min-width: unset;">
-<input name="evo_transf_ch" type="checkbox" onclick="toggleTransfusao('ch')"/> CH
-<input id="evo_transf_ch_qtd" name="evo_transf_ch_qtd" type="text" placeholder="qtd" style="width: 60px; display: none;"/>
-</label>
-<label style="flex-direction: row; align-items: center; gap: 5px; min-width: unset;">
-<input name="evo_transf_plaq" type="checkbox" onclick="toggleTransfusao('plaq')"/> Plaquetas
-<input id="evo_transf_plaq_qtd" name="evo_transf_plaq_qtd" type="text" placeholder="qtd" style="width: 60px; display: none;"/>
-</label>
-<label style="flex-direction: row; align-items: center; gap: 5px; min-width: unset;">
-<input name="evo_transf_plasma" type="checkbox" onclick="toggleTransfusao('plasma')"/> Plasma
-<input id="evo_transf_plasma_qtd" name="evo_transf_plasma_qtd" type="text" placeholder="qtd" style="width: 60px; display: none;"/>
-</label>
-<label style="flex-direction: row; align-items: center; gap: 5px; min-width: unset;">
-<input name="evo_transf_crio" type="checkbox" onclick="toggleTransfusao('crio')"/> Crioprecipitado
-<input id="evo_transf_crio_qtd" name="evo_transf_crio_qtd" type="text" placeholder="qtd" style="width: 60px; display: none;"/>
-</label>
-</div>
-</div>
-</div>
-<!-- Invasivos / Dispositivos -->
-<div class="section">
-<h3>Invasivos / Dispositivos</h3>
-<div class="row nowrap">
-<label style="min-width: 260px;">CVC (local):
-        <input name="evo_cvc_local" type="text"/>
-</label>
-<label style="min-width: 140px;">Dia:
-        <input name="evo_cvc_dia" type="text"/>
-</label>
-<label style="min-width: 260px;">Cateter arterial (local):
-        <input name="evo_art_local" type="text"/>
-</label>
-<label style="min-width: 140px;">Dia:
-        <input name="evo_art_dia" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 260px;">Cateter de HD (local):
-        <input name="evo_hd_local" type="text"/>
-</label>
-<label style="min-width: 140px;">Dia:
-        <input name="evo_hd_dia" type="text"/>
-</label>
-<label style="min-width: 180px;">SVD (dia):
-        <input name="evo_svd_dia" type="text"/>
-</label>
-<label style="min-width: 180px;">TOT/TQT (dia):
-        <input name="evo_tot_tqt_dia" type="text"/>
-</label>
-</div>
-<div class="row">
-<div class="row nowrap">
-<label style="min-width: 260px;">Swan-Ganz (local):
-        <input name="evo_swanganz_local" type="text"/>
-</label>
-<label style="min-width: 140px;">Dia:
-        <input name="evo_swanganz_dia" placeholder="dd/mm ou D+?" type="text"/>
-</label>
-<label style="min-width: 220px;">BIA:
-        <input name="evo_bia" placeholder="sim/não ou detalhes" type="text"/>
-</label>
-<label style="min-width: 140px;">Dia:
-        <input name="evo_bia_dia" placeholder="dd/mm ou D+?" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 320px;">Marcapasso transvenoso:
-        <input name="evo_mp_transv" placeholder="VVI/DDD etc." type="text"/>
-</label>
-<label style="min-width: 140px;">Dia:
-        <input name="evo_mp_transv_dia" placeholder="dd/mm ou D+?" type="text"/>
-</label>
-</div>
-<label style="flex: 1; min-width: 100%;">Drenos/outros:
-        <input name="evo_drenos_outros" type="text"/>
-</label>
-</div>
-<div class="row">
-<label style="flex: 1; min-width: 100%;">Retirados recentemente (data/hora | motivo):
-        <textarea name="evo_retirados" rows="3"></textarea>
-</label>
-</div>
-</div>
-<!-- Nutrição -->
-<div class="section" id="evo_nutricao_gi">
-<h3>Nutrição / Gastrointestinal</h3>
-<div class="row grid-2">
-<label>VET pleno (kcal/dia):
-      <input name="evo_vet_kcal" placeholder="kcal/dia" step="1" type="number"/>
-</label>
-<label>Proteína (g/dia):
-      <input name="evo_vet_prot" placeholder="g/dia" step="1" type="number"/>
-</label>
-</div>
-<div class="row grid-2">
-<label>Dieta enteral:
-      <select id="evo_dieta_select" name="evo_dieta_select"></select>
-</label>
-<div class="hidden" id="evo_dieta_custom_wrap">
-<div class="row grid-2" style="margin-top: 8px;">
-<label>kcal/mL:
-          <input name="evo_dieta_kcal_ml" placeholder="ex: 1.0" step="0.001" type="number"/>
-</label>
-<label>prot g/mL:
-          <input name="evo_dieta_prot_ml" placeholder="ex: 0.04" step="0.001" type="number"/>
-</label>
-</div>
-</div>
-</div>
-<div class="row grid-2">
-<label>Infusão (mL/h):
-      <input name="evo_dieta_mlh" placeholder="mL/h" step="0.1" type="number"/>
-</label>
-<label>Volume em 24h (mL) (auto):
-      <input name="evo_dieta_ml20" readonly="" step="1" type="number"/>
-</label>
-</div>
-<div class="row grid-2">
-<label>Kcal 24h (auto):
-      <input name="evo_kcal_admin" readonly="" step="1" type="number"/>
-</label>
-<label>Proteína 24h (auto, com whey):
-      <input name="evo_prot_admin" readonly="" step="1" type="number"/>
-</label>
-</div>
-<div class="row grid-2">
-<label>Whey (g de proteína):
-      <input name="evo_whey_prot_g" placeholder="0" step="1" type="number"/>
-</label>
-<div></div>
-</div>
-<div class="row grid-2">
-<label>% VET pleno atingido (24h) – Calorias (auto):
-      <input name="evo_pct_kcal" readonly="" step="0.1" type="number"/>
-</label>
-<label>% VET pleno atingido (24h) – Proteína (auto):
-      <input name="evo_pct_prot" readonly="" step="0.1" type="number"/>
-</label>
-</div>
-<hr style="border:0;border-top:1px solid #e5e7eb;margin:12px 0;"/>
-<div class="row nowrap" style="align-items:center; gap:14px; flex-wrap:wrap;">
-<div style="min-width: 180px;">Vômitos:</div>
-<label><input name="evo_vomitos" type="radio" value="sim"/> Sim</label>
-<label><input name="evo_vomitos" type="radio" value="nao"/> Não</label>
-</div>
-<div class="row nowrap" style="align-items:center; gap:14px; flex-wrap:wrap;">
-<div style="min-width: 180px;">Distensão abdominal:</div>
-<label><input name="evo_distensao" type="radio" value="sim"/> Sim</label>
-<label><input name="evo_distensao" type="radio" value="nao"/> Não</label>
-</div>
-<div class="row nowrap" style="align-items:center; gap:14px; flex-wrap:wrap;">
-<div style="min-width: 180px;">Estase gástrica:</div>
-<label><input name="evo_estase" onclick="evoToggleBox('evo_estase_wrap', true)" type="radio" value="sim"/> Sim</label>
-<label><input name="evo_estase" onclick="evoToggleBox('evo_estase_wrap', false)" type="radio" value="nao"/> Não</label>
-<div class="hidden" id="evo_estase_wrap" style="flex:1; min-width:260px;">
-<input name="evo_estase_residuo" placeholder="Quantidade de resíduo gástrico (mL)" style="width:100%;" type="text"/>
-</div>
-</div>
-<div class="row nowrap" style="align-items:center; gap:14px; flex-wrap:wrap;">
-<div>Hipoglicemias em 12/24h:</div>
-<label><input name="evo_hipo" onclick="evoToggleBox('evo_hipo_wrap', true)" type="radio" value="sim"/> Sim</label>
-<label><input name="evo_hipo" onclick="evoToggleBox('evo_hipo_wrap', false)" type="radio" value="nao"/> Não</label>
-<div class="hidden" id="evo_hipo_wrap" style="flex:1; min-width:260px;">
-<input name="evo_hipo_glicose" placeholder="Quantidade de glicose feita" style="width:100%;" type="text"/>
-</div>
-</div>
-<div class="row nowrap" style="align-items:center; gap:14px; flex-wrap:wrap;">
-<div>Hiperglicemias em 12/24h:</div>
-<label><input name="evo_hiper" onclick="evoToggleBox('evo_hiper_wrap', true)" type="radio" value="sim"/> Sim</label>
-<label><input name="evo_hiper" onclick="evoToggleBox('evo_hiper_wrap', false)" type="radio" value="nao"/> Não</label>
-<div class="hidden" id="evo_hiper_wrap" style="flex:1; min-width:260px;">
-<input name="evo_hiper_insulina" placeholder="Quantidade de insulina regular feita" style="width:100%;" type="text"/>
-</div>
-</div>
-<div class="row nowrap" style="align-items:center; gap:14px; flex-wrap:wrap;">
-<div style="min-width: 220px;">Profilaxia úlcera de estresse:</div>
-<label><input name="evo_profilaxia_ulcera" type="radio" value="sim"/> Sim</label>
-<label><input name="evo_profilaxia_ulcera" type="radio" value="nao"/> Não</label>
-</div>
-</div>
-<!-- Outros exames relevantes -->
-<div class="section">
-<h3>Outros exames relevantes</h3>
-<div class="row">
-<textarea name="evo_outros_labs" rows="4" style="width: 100%;"></textarea>
-</div>
-</div>
-<!-- Interconsultas -->
-<div class="section">
-<h3>Interconsultas</h3>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 120px;">Nefrologia:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px;">
-<input name="evo_nefro" onclick="evoToggleBox('evo_nefro_txt_wrap', true)" type="radio" value="sim"/> Sim
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px;">
-<input name="evo_nefro" onclick="evoToggleBox('evo_nefro_txt_wrap', false)" type="radio" value="nao"/> Não
-      </label>
-<div class="hidden" id="evo_nefro_txt_wrap" style="flex: 1;">
-<textarea name="evo_nefro_txt" placeholder="Descrever" rows="3" style="width: 100%;"></textarea>
-</div>
-</div>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 120px;">CG:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px;">
-<input name="evo_cg" onclick="evoToggleBox('evo_cg_txt_wrap', true)" type="radio" value="sim"/> Sim
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px;">
-<input name="evo_cg" onclick="evoToggleBox('evo_cg_txt_wrap', false)" type="radio" value="nao"/> Não
-      </label>
-<div class="hidden" id="evo_cg_txt_wrap" style="flex: 1;">
-<textarea name="evo_cg_txt" placeholder="Descrever" rows="3" style="width: 100%;"></textarea>
-</div>
-</div>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 120px;">CCV:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px;">
-<input name="evo_ccv" onclick="evoToggleBox('evo_ccv_txt_wrap', true)" type="radio" value="sim"/> Sim
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px;">
-<input name="evo_ccv" onclick="evoToggleBox('evo_ccv_txt_wrap', false)" type="radio" value="nao"/> Não
-      </label>
-<div class="hidden" id="evo_ccv_txt_wrap" style="flex: 1;">
-<textarea name="evo_ccv_txt" placeholder="Descrever" rows="3" style="width: 100%;"></textarea>
-</div>
-</div>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 120px;">Vascular:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px;">
-<input name="evo_vasc" onclick="evoToggleBox('evo_vasc_txt_wrap', true)" type="radio" value="sim"/> Sim
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px;">
-<input name="evo_vasc" onclick="evoToggleBox('evo_vasc_txt_wrap', false)" type="radio" value="nao"/> Não
-      </label>
-<div class="hidden" id="evo_vasc_txt_wrap" style="flex: 1;">
-<textarea name="evo_vasc_txt" placeholder="Descrever" rows="3" style="width: 100%;"></textarea>
-</div>
-</div>
-</div>
-<!-- Impressão / Plano -->
-<div class="section">
-<h3>Impressão clínica</h3>
-<div class="row">
-<textarea name="evo_impressao" rows="4" style="width: 100%;"></textarea>
-</div>
-</div>
-<div class="section">
-<h3>Plano / Metas das próximas 24h</h3>
-<div class="row">
-<textarea name="evo_plano_24h" rows="5" style="width: 100%;"></textarea>
-</div>
-</div>
-<div class="section no-print" style="background: #e8f5e9; border: 2px solid #4caf50; padding: 15px;">
-<div class="row nowrap" style="justify-content: center; gap: 12px; flex-wrap: wrap;">
-<button onclick="salvarEvolucao()" type="button" style="background: #4caf50; color: white; font-weight: bold; padding: 10px 20px;">
-    💾 Salvar
-</button>
-<button onclick="evoGerarTexto()" type="button" style="background: #1976d2; color: white; padding: 10px 20px;">
-    📝 Gerar Texto
-</button>
-<button onclick="window.print()" type="button" style="background: #607d8b; color: white; padding: 10px 20px;">
-    🖨️ Imprimir
-</button>
-<button onclick="exportarPDF()" type="button" style="background: #ff9800; color: white; font-weight: bold; padding: 10px 20px;">
-    📄 PDF
-</button>
-<button onclick="novaEvolucaoRapida()" type="button" style="background: #9c27b0; color: white; padding: 10px 20px;">
-    🔄 Nova Evolução
-</button>
-</div>
-<div id="lista_evolucoes" style="margin-top: 15px; border-top: 1px solid #a5d6a7; padding-top: 10px;"></div>
-</div>
-</div>
-<!-- Painel: Texto para copiar (Evolução) -->
-<div class="section hidden" id="painelTextoEvo">
-<h3 style="margin-top: 0;">Texto (Evolução) para copiar</h3>
-<div class="row">
-<textarea id="textoGeradoEvo" rows="18" style="width: 100%;"></textarea>
-</div>
-<div class="row nowrap" style="justify-content: flex-end; gap: 10px;">
-<button onclick="evoCopiarTexto()" type="button">Copiar</button>
-<button onclick="evoFecharPainelTexto()" type="button">Fechar</button>
-</div>
-</div>
-</div>
+<script src="https/cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
 // ===== Helpers (ES5) =====
   function byId(id){ return document.getElementById(id); }
   function qs(sel){ return document.querySelector(sel); }
   function qsa(sel){ return document.querySelectorAll(sel); }
-
-
-  function pad2(n){ return (n<10 ? '0' : '') + n; }
+function pad2(n){ return (n<10 ? '0' : '') + n; }
 
   function nowLocalDatetimeValue(){
     var d = new Date();
@@ -2064,8 +352,7 @@ let isAdmin = false;
     if (!el) el = byId(idOrName) || qs('[name="'+idOrName+'"]');
     setNowIfEmptyInput(el);
   }
-
-  function parseLocalDateTime(s){
+function parseLocalDateTime(s){
     if (!s) return null;
     var parts = s.split('T');
     var datePart = parts[0];
@@ -2091,8 +378,7 @@ let isAdmin = false;
 
     var peso = pesoEl ? parseFloat(pesoEl.value) : NaN;
     var alturaCm = alturaEl ? parseFloat(alturaEl.value) : NaN;
-
-    if (peso > 0 && alturaCm > 0) {
+if (peso > 0 && alturaCm > 0) {
       var alturaM = alturaCm / 100;
       var imc = peso / (alturaM * alturaM);
       imcEl.value = (Math.round(imc * 100) / 100).toFixed(2);
@@ -2133,8 +419,7 @@ let isAdmin = false;
       campo.classList.add('hidden');
     }
   }
-
-  // ===== UI: Toggle Admissão (colapsar/expandir) =====
+// ===== UI: Toggle Admissão (colapsar/expandir) =====
   var admissaoColapsada = false;
   
   function toggleAdmissao() {
@@ -2164,6 +449,7 @@ let isAdmin = false;
           var d = new Date(dataAdm.value);
           resumoTexto += ' - Adm: ' + d.toLocaleDateString('pt-BR');
         }
+        }
       }
       
       conteudo.style.display = 'none';
@@ -2184,8 +470,7 @@ let isAdmin = false;
     
     alert('✅ Admissão salva com sucesso!');
   }
-
-  // ===== UI: Toggle Transfusões =====
+// ===== UI: Toggle Transfusões =====
   function toggleTransfusao(tipo) {
     var checkbox = document.getElementsByName('evo_transf_' + tipo)[0];
     var qtdInput = byId('evo_transf_' + tipo + '_qtd');
@@ -2216,8 +501,7 @@ let isAdmin = false;
       if (textarea) textarea.value = '';
     }
   }
-
-  // ===== UI: Toggle Hemodinâmico (Swan Ganz, Marcapasso, esCCO) =====
+// ===== UI: Toggle Hemodinâmico (Swan Ganz, Marcapasso, esCCO) =====
   function toggleHemoExtra(tipo) {
     var checkbox = document.getElementsByName('evo_' + tipo + '_check')[0];
     var wrap = byId('evo_' + tipo + '_wrap');
@@ -2243,8 +527,7 @@ let isAdmin = false;
     // Abre a evolução diária
     abrirEvolucao();
   }
-
-  // ===== UI: Respiratório =====
+// ===== UI: Respiratório =====
   function toggleResp(tipo) {
     var vm = byId('resp_vm');
     var venturi = byId('resp_venturi');
@@ -2271,8 +554,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     else if (tipo === 'CN') cn.classList.remove('hidden');
     else if (tipo === 'MR') mr.classList.remove('hidden');
   }
-
-  // ===== UI: Gasometria =====
+// ===== UI: Gasometria =====
   function toggleGasometria() {
     var chk = byId('chk_gaso');
     var div = byId('gaso_fields');
@@ -2300,8 +582,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     var chk = byId(map[drug].chk);
     var div = byId(map[drug].div);
     if (!chk || !div) return;
-
-    if (chk.checked) {
+if (chk.checked) {
       div.classList.remove('hidden');
     } else {
       var input = div.querySelector('input');
@@ -2337,8 +618,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       wrap.classList.add('hidden');
     }
   }
-
-  function toggleCulturas(sim) {
+function toggleCulturas(sim) {
     var divSim = byId('culturas_sim');
     var divNao = byId('culturas_nao');
     if (!divSim || !divNao) return;
@@ -2361,8 +641,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       if (wrap) wrap.classList.add('hidden');
     }
   }
-
-  // ===== UI: Glasgow =====
+// ===== UI: Glasgow =====
   function calcGlasgow() {
     var ao = parseFloat((byId('glasgow_ao')||{}).value) || 0;
     var rv = parseFloat((byId('glasgow_rv')||{}).value) || 0;
@@ -2391,8 +670,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       div.classList.add('hidden');
     }
   }
-
-  function toggleDose(chkId, doseId) {
+function toggleDose(chkId, doseId) {
     var chk = byId(chkId);
     var dose = byId(doseId);
     if (!chk || !dose) return;
@@ -2404,6 +682,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       dose.value = '';
       dose.classList.add('hidden');
     }
+  }
 
   // ===== Evolução: Neuro igual à admissão =====
   function evoCalcGlasgow() {
@@ -2414,8 +693,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     var out = byId('evo_glasgow_total');
     if (out) out.value = total > 0 ? String(total) : '';
   }
-
-  function evoToggleDelirium(sim) {
+function evoToggleDelirium(sim) {
     var tipos = byId('evo_delirium_tipos');
     if (!tipos) return;
     if (sim) {
@@ -2442,14 +720,11 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       div.classList.add('hidden');
     }
   }
-  }
-
   // ===== UI: Delirium =====
   function toggleDelirium(sim) {
     var tipos = byId('delirium_tipos');
     if (!tipos) return;
-
-    if (sim) {
+if (sim) {
       tipos.classList.remove('hidden');
     } else {
       var cbs = tipos.querySelectorAll('input[type="checkbox"]');
@@ -2475,8 +750,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     }
     return data;
   }
-
-  function aplicarDadosFormulario(data) {
+function aplicarDadosFormulario(data) {
     if (!data) return;
     
     // Primeiro, aplicar campos com :: (checkboxes e radios salvos no formato antigo)
@@ -2529,8 +803,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       if (byId('chk_' + drugs[d])) toggleHemoDrug(drugs[d]);
     }
     if (byId('chk_perf')) togglePerfusao();
-
-    // Analgesia
+// Analgesia
     var analgSel = qs('input[name="analg_sed"]:checked');
     if (analgSel) toggleAnalgesia(analgSel.value === 'sim');
 
@@ -2564,8 +837,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       }
     } catch(e){}
   }
-
-  function carregarFormulario() {
+function carregarFormulario() {
     try {
       var raw = localStorage.getItem('admissao_cti_adulto');
       if (!raw) return;
@@ -2597,8 +869,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     var p = byId('painelTexto');
     if (p) p.classList.add('hidden');
   }
-
-  function copiarTexto() {
+function copiarTexto() {
     var ta = byId('textoGerado');
     if (!ta) return;
     ta.focus();
@@ -2626,8 +897,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     if (sexo) idParts.push('Sexo: ' + sexo);
     if (data) idParts.push('Data: ' + data);
     linhas.push('Identificação: ' + idParts.join(' | '));
-
-    var ant = [];
+var ant = [];
     if (peso) ant.push('Peso: ' + peso + ' kg');
     if (altura) ant.push('Altura: ' + altura + ' cm');
     if (imc) ant.push('IMC: ' + imc);
@@ -2646,8 +916,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     if (med) { linhas.push('Medicações domiciliares: ' + med); linhas.push(''); }
     linhas.push('Alergias: ' + (alergiasSim ? (alergiasTxt || 'Sim') : 'Não'));
     linhas.push('');
-
-    // Imagem
+// Imagem
     var ecg = val('ecg_admissao'), rx = val('rx_torax_admissao'), pocus = val('pocus_admissao'), imgout = val('img_outros');
     if (ecg || rx || pocus || imgout) {
       linhas.push('Exames de imagem:');
@@ -2665,8 +934,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     addLab('Ureia','ureia'); addLab('Creatinina','creatinina');
     addLab('Na','na'); addLab('K','k'); addLab('Mg','mg'); addLab('Ca','ca'); addLab('Fósforo','fosforo');
     addLab('INR','inr'); addLab('PTT','ptt'); addLab('BT','bt'); addLab('BD','bd'); addLab('TGO','tgo'); addLab('TGP','tgp');
-
-    var labOut = val('lab_outros');
+var labOut = val('lab_outros');
     if (labs.length || labOut) {
       linhas.push('Laboratório:');
       if (labs.length) linhas.push('- ' + labs.join(' | '));
@@ -2683,8 +951,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     var suporte = '';
     var respSel = qs('input[name="resp_suporte"]:checked');
     if (respSel) suporte = respSel.value;
-
-    var respDet = [];
+var respDet = [];
     if (suporte === 'VM') {
       function addVM(lbl, key){ var v = val(key); if (v) respDet.push(lbl + ': ' + v); }
       addVM('Modo','vm_modo'); addVM('Pinsp/PS','vm_pinsp_ps'); addVM('VC','vm_vc'); addVM('FR','vm_fr');
@@ -2696,8 +963,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     } else if (suporte === 'MR') {
       var ml = val('mr_litros'); if (ml) respDet.push('MR: ' + ml + ' L/min');
     }
-
-    var gasChk = byId('chk_gaso');
+var gasChk = byId('chk_gaso');
     var gasMarcada = gasChk ? gasChk.checked : false;
     var gasDet = [];
     function addGas(lbl, key){ var v = val(key); if (v) gasDet.push(lbl + ': ' + v); }
@@ -2710,8 +976,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     var drogas = [];
     function addD(lbl,key){ var v=val(key); if (v) drogas.push(lbl+': '+v); }
     addD('Dobutamina','dobutamina_dose'); addD('Milrinona','milrinona_dose'); addD('Noradrenalina','noradrenalina_dose'); addD('Vasopressina','vasopressina_dose');
-
-    var perf = [];
+var perf = [];
     function addP(lbl,key){ var v=val(key); if (v) perf.push(lbl+': '+v); }
     addP('Lactato','perf_lactato'); addP('SvcO2','perf_svco2'); addP('GapCO2','perf_gapco2');
 
@@ -2726,8 +991,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
         atbs.push(a + extra);
       }
     }
-
-    var culturas = '';
+var culturas = '';
     var cultSel = qs('input[name="inf_culturas"]:checked');
     if (cultSel && cultSel.value === 'sim') {
       var sites = [];
@@ -2746,6 +1010,8 @@ if (tipo === 'VM') vm.classList.remove('hidden');
 
     var glas = val('glasgow_total');
     var rass = val('rass_atual');
+var glas = val('glasgow_total');
+    var rass = val('rass_atual');
 
     var delirium = '';
     var delSel = qs('input[name="delirium"]:checked');
@@ -2755,10 +1021,9 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       if (byId('del_hiper') && byId('del_hiper').checked) tipos.push('hiperativo');
       if (byId('del_hipo') && byId('del_hipo').checked) tipos.push('hipoativo');
       if (byId('del_misto') && byId('del_misto').checked) tipos.push('misto');
-      delirium = 'Delirium: sim' + (tipos.length ? (' ('+tipos.join(', ')+')') : '');
+      delirium = 'Delirium: sim' + (tipos.length ? (' ('+tipos.join(', ')+')' : '');
     }
-
-    var analgTxt = '';
+var analgTxt = '';
     var analgSel = qs('input[name="analg_sed"]:checked');
     if (analgSel && analgSel.value === 'nao') analgTxt = 'Analgesia/sedação: não';
     if (analgSel && analgSel.value === 'sim') {
@@ -2774,8 +1039,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       }
       analgTxt = 'Analgesia/sedação: sim' + (meds.length ? (' ['+meds.join('; ')+']') : '');
     }
-
-    var hasSist = suporte || respDet.length || (gasMarcada && gasDet.length) || hemoBase.length || drogas.length || perf.length || foco || atbs.length || culturas || glas || rass || delirium || analgTxt;
+var hasSist = suporte || respDet.length || (gasMarcada && gasDet.length) || hemoBase.length || drogas.length || perf.length || foco || atbs.length || culturas || glas || rass || delirium || analgTxt;
     if (hasSist) {
       linhas.push('Sistemas:');
       var respLine = [];
@@ -2789,8 +1053,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       if (drogas.length) hemoLine.push('Drogas: '+drogas.join(' | '));
       if (perf.length) hemoLine.push('Perfusão: '+perf.join(' | '));
       if (hemoLine.length) linhas.push('- Hemodinâmica: ' + hemoLine.join(' | '));
-
-      var infLine = [];
+var infLine = [];
       if (foco) infLine.push('Foco: '+foco);
       if (atbs.length) infLine.push('ATB: '+atbs.join(' | '));
       if (culturas) infLine.push(culturas);
@@ -2809,8 +1072,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     // Invasivos
     var inv = [];
     function addInv(lbl, txt){ if (txt) inv.push(lbl + ': ' + txt); }
-
-    var cvcLoc = val('cvc_local'), cvcDia = val('cvc_dia');
+var cvcLoc = val('cvc_local'), cvcDia = val('cvc_dia');
     if (cvcLoc || cvcDia) addInv('CVC', [cvcLoc, cvcDia ? ('dia '+cvcDia) : ''].join(' | ').replace(/\s\|\s$/,''));
     var artLoc = val('art_local'), artDia = val('art_dia');
     if (artLoc || artDia) addInv('Cateter arterial', [artLoc, artDia ? ('dia '+artDia) : ''].join(' | ').replace(/\s\|\s$/,''));
@@ -2825,8 +1087,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       for (var iii=0; iii<inv.length; iii++) linhas.push('- ' + inv[iii]);
       linhas.push('');
     }
-
-    var diag = val('diagnostico_internacao');
+var diag = val('diagnostico_internacao');
     if (diag) { linhas.push('Diagnóstico(s) de internação: ' + diag); linhas.push(''); }
 
     var plano = val('plano_metas');
@@ -2851,8 +1112,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     if (inp && !inp.value && typeof nowLocalDatetimeValue === 'function') inp.value = nowLocalDatetimeValue();
 // Auto-preencher data/hora da evolução (somente se vazio)
     setNowIfEmpty('evo_data', area);
-
-    // Copiar identificação da ADMISSÃO (primeira vez)
+// Copiar identificação da ADMISSÃO (primeira vez)
     evoAutoFromAdmissao();
     
     // Copiar dados da ÚLTIMA EVOLUÇÃO (se existir)
@@ -2883,8 +1143,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       }
     }
   }
-
-  function copiarDadosEvolucaoAnterior() {
+function copiarDadosEvolucaoAnterior() {
     try {
       // Usa a chave específica do leito
       var prev = localStorage.getItem('evolucao_last_' + ctiAtual + '_' + leitoAtual);
@@ -2960,8 +1219,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       console.error('Erro ao copiar evolução anterior:', e);
     }
   }
-
-  function evoAtualizarDiaUTI() {
+function evoAtualizarDiaUTI() {
     var out = qs('#evolucaoArea [name="evo_dia_uti"]');
     if (!out) return;
     var admDT = val('datahora_admissao');
@@ -2977,8 +1235,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     var dia = Math.floor(diffMs / 86400000) + 1;
     out.value = (dia>0 ? String(dia) : '');
   }
-
-  // ===== Evolução diária (ES5) =====
+// ===== Evolução diária (ES5) =====
   function fecharEvolucao() {
     var area = byId('evolucaoArea');
     if (area) area.classList.add('hidden');
@@ -3002,8 +1259,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     venturi.classList.add('hidden');
     cn.classList.add('hidden');
     mr.classList.add('hidden');
-
-    if (tipo === 'VM') vm.classList.remove('hidden');
+if (tipo === 'VM') vm.classList.remove('hidden');
     else if (tipo === 'Venturi') venturi.classList.remove('hidden');
     else if (tipo === 'CN') cn.classList.remove('hidden');
     else if (tipo === 'MR') mr.classList.remove('hidden');
@@ -3022,8 +1278,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       div.classList.add('hidden');
     }
   }
-
-  function evoToggleHemoDrug(drug) {
+function evoToggleHemoDrug(drug) {
     var map = {
       dobutamina: { chk: 'evo_chk_dobutamina', div: 'evo_drug_dobutamina' },
       milrinona: { chk: 'evo_chk_milrinona', div: 'evo_drug_milrinona' },
@@ -3048,8 +1303,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     var chk = byId('evo_chk_perf');
     var div = byId('evo_perf_fields');
     if (!chk || !div) return;
-
-    if (chk.checked) div.classList.remove('hidden');
+if (chk.checked) div.classList.remove('hidden');
     else {
       var ins = div.querySelectorAll('input');
       for (var i=0;i<ins.length;i++) ins[i].value = '';
@@ -3080,8 +1334,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       wrap.classList.add('hidden');
     }
   }
-
-  function evoToggleCulturas() {
+function evoToggleCulturas() {
     var sel = qs('input[name="evo_culturas"]:checked');
     var wrap = byId('evo_cult_pos_wrap');
     if (!wrap) return;
@@ -3104,8 +1357,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       wrap.classList.add('hidden');
     }
   }
-
-  function evoToggleInterconsulta(name, wrapId) {
+function evoToggleInterconsulta(name, wrapId) {
     var sel = qs('input[name="'+name+'"]:checked');
     var wrap = byId(wrapId);
     if (!wrap) return;
@@ -3127,8 +1379,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     var r = document.querySelector('input[name="evo_renal_periodo"][value="'+String(horas)+'"]');
     if (r) r.checked = true;
   }
-
-  function evoSyncRenalPeriodoDefault() {
+function evoSyncRenalPeriodoDefault() {
     // Se o usuário não escolheu, define padrão pelo turno (diurna=24h, noturna=12h)
     var chosen = document.querySelector('input[name="evo_renal_periodo"]:checked');
     if (chosen) { evoSetRenalPeriodo(parseInt(chosen.value,10)); return; }
@@ -3150,8 +1401,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
 
     function byName(n){ return document.querySelector('[name="'+n+'"]'); }
     function vName(n){ var el = byName(n); return el ? (el.value || '') : ''; }
-
-    var dstH = area.querySelector('[name="evo_comorbidades"]');
+var dstH = area.querySelector('[name="evo_comorbidades"]');
     var dstA = area.querySelector('[name="evo_alergias"]');
     var dstS = area.querySelector('[name="evo_cirurgias"]');
 
@@ -3164,6 +1414,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
   }
 
   function evoKey(turno) { return 'evolucao_' + (turno === 'Noturna' ? 'noturna' : 'diurna'); }
+function evoKey(turno) { return 'evolucao_' + (turno === 'Noturna' ? 'noturna' : 'diurna'); }
 
   function evoCollect() {
     var data = {};
@@ -3188,8 +1439,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       var el = els[i];
       var key = el.name || el.id;
       if (!key || typeof data[key] === 'undefined') continue;
-
-      if (el.type === 'checkbox') el.checked = !!data[key];
+if (el.type === 'checkbox') el.checked = !!data[key];
       else if (el.type === 'radio') el.checked = (data[key] !== null && el.value === data[key]);
       else el.value = data[key] !== null ? data[key] : '';
     }
@@ -3216,8 +1466,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     var drugs = ['dobutamina','milrinona','noradrenalina','vasopressina'];
     for (var d=0; d<drugs.length; d++) evoToggleHemoDrug(drugs[d]);
   }
-
-  function evoSalvar() {
+function evoSalvar() {
     try {
       var turnoSel = qs('input[name="evo_turno"]:checked');
       var turno = turnoSel ? turnoSel.value : 'Diurna';
@@ -3245,8 +1494,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       evoApply(JSON.parse(raw));
     } catch(e){}
   }
-
-  function evoCopiarTurnoAnterior() {
+function evoCopiarTurnoAnterior() {
     try {
       var raw = localStorage.getItem('evolucao_last');
       if (!raw) return;
@@ -3266,8 +1514,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
         var di = qs('[name="evo_dia_uti"]');
         if (di && data['evo_dia_uti']) di.value = data['evo_dia_uti'];
       }
-
-      // marcar turno atual visualmente (sem reescrever localStorage)
+// marcar turno atual visualmente (sem reescrever localStorage)
       var ts = qsa('input[name="evo_turno"]');
       for (var i=0;i<ts.length;i++) ts[i].checked = (ts[i].value === turnoAtual);
       evoAtualizarLabelsRenal();
@@ -3294,8 +1541,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     ta.select();
     try { document.execCommand('copy'); } catch(e){}
   }
-
-  function evoVal(nameOrId) {
+function evoVal(nameOrId) {
     var el = qs('#evolucaoArea [name="'+nameOrId+'"]') || byId(nameOrId);
     if (!el) return '';
     if (el.type === 'checkbox') return el.checked ? 'Sim' : 'Não';
@@ -3321,8 +1567,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     if (!area) return;
     var tfgEl  = area.querySelector('[name="evo_tfg_ckd_epi"]');
     var clcrEl = area.querySelector('[name="evo_clcr_cg"]');
-
-    if (!(creat > 0) || !(idade > 0) || !(peso > 0)) {
+if (!(creat > 0) || !(idade > 0) || !(peso > 0)) {
       if (tfgEl) tfgEl.value = '';
       if (clcrEl) clcrEl.value = '';
       return;
@@ -3348,8 +1593,6 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     if (tfgEl) tfgEl.value = fmt(eGFR);
     if (clcrEl) clcrEl.value = fmt(clCr);
   }
-
-
 function evoCopiarMedAtual(){
   try{
     var prev = localStorage.getItem('evolucao_last');
@@ -3381,7 +1624,6 @@ function evoCopiarMotivoAnterior(){
     alert('Erro ao copiar motivo: ' + e.message);
   }
 }
-
 function evoCopiarProblemasAnteriores(){
   try{
     var prev = localStorage.getItem('evolucao_last');
@@ -3397,7 +1639,6 @@ function evoCopiarProblemasAnteriores(){
     alert('Erro ao copiar problemas: ' + e.message);
   }
 }
-
 function evoCopiarHPPAnterior(){
   try{
     var prev = localStorage.getItem('evolucao_last');
@@ -3423,7 +1664,6 @@ function evoCopiarHPPAnterior(){
     alert('Erro ao copiar HPP: ' + e.message);
   }
 }
-
 function evoCopiarAlergiasAnterior(){
   try{
     var prev = localStorage.getItem('evolucao_last');
@@ -3439,7 +1679,6 @@ function evoCopiarAlergiasAnterior(){
     alert('Erro ao copiar alergias: ' + e.message);
   }
 }
-
 function evoCopiarInfeccaoAnterior(){
   try{
     var prev = localStorage.getItem('evolucao_last');
@@ -3485,7 +1724,6 @@ function evoCopiarInfeccaoAnterior(){
     alert('Erro ao copiar infecção: ' + e.message);
   }
 }
-
 function evoCopiarDispositivosAnterior(){
   try{
     var prev = localStorage.getItem('evolucao_last');
@@ -3510,7 +1748,6 @@ function evoCopiarDispositivosAnterior(){
     alert('Erro ao copiar dispositivos: ' + e.message);
   }
 }
-
 function evoCopiarImpressaoAnterior(){
   try{
     var prev = localStorage.getItem('evolucao_last');
@@ -3526,7 +1763,6 @@ function evoCopiarImpressaoAnterior(){
     alert('Erro ao copiar impressão: ' + e.message);
   }
 }
-
 function evoAtualizarHistorico(){
   var list = byId('evoHistoryList');
   if (!list) return;
@@ -3553,8 +1789,7 @@ function evoGerarTexto() {
     var turnoSel = qs('input[name="evo_turno"]:checked');
     var turno = turnoSel ? turnoSel.value : '';
     var data = evoVal('evo_data');
-
-    linhas.push('EVOLUÇÃO ' + (turno ? turno.toUpperCase() : ''));
+linhas.push('EVOLUÇÃO ' + (turno ? turno.toUpperCase() : ''));
     if (data) linhas.push('Data/hora: ' + data);
     linhas.push('');
 
@@ -3578,8 +1813,7 @@ function evoGerarTexto() {
 
     var prob = evoVal('evo_problemas');
     if (prob) { linhas.push('Problemas ativos:'); linhas.push(prob); linhas.push(''); }
-
-    // Respiratório
+// Respiratório
     var supSel = qs('input[name="evo_resp_suporte"]:checked');
     var sup = supSel ? supSel.value : '';
     var respDet = [];
@@ -3599,8 +1833,7 @@ function evoGerarTexto() {
     var gasDet = [];
     function addG(lbl,key){ var v=evoVal(key); if(v) gasDet.push(lbl+': '+v); }
     addG('pH','evo_gas_ph'); addG('pO2','evo_gas_po2'); addG('pCO2','evo_gas_pco2'); addG('HCO3','evo_gas_hco3'); addG('BE','evo_gas_be'); addG('sO2','evo_gas_so2');
-
-    if (sup || respDet.length || (gasMarc && gasDet.length)) {
+if (sup || respDet.length || (gasMarc && gasDet.length)) {
       linhas.push('Respiratório: ' + [sup && ('Suporte: '+sup), respDet.length && respDet.join(' | '), (gasMarc && gasDet.length) && ('Gasometria: '+gasDet.join(' | '))].filter(Boolean).join(' | '));
       linhas.push('');
     }
@@ -3613,8 +1846,7 @@ function evoGerarTexto() {
     var drogas = [];
     function addD(lbl,key){ var v=evoVal(key); if(v) drogas.push(lbl+': '+v); }
     addD('Dobutamina','evo_dobutamina_dose'); addD('Milrinona','evo_milrinona_dose'); addD('Noradrenalina','evo_noradrenalina_dose'); addD('Vasopressina','evo_vasopressina_dose');
-
-    var perf = [];
+var perf = [];
     function addP(lbl,key){ var v=evoVal(key); if(v) perf.push(lbl+': '+v); }
     addP('Lactato','evo_perf_lactato'); addP('SvcO2','evo_perf_svco2'); addP('GapCO2','evo_perf_gapco2');
 
@@ -3628,8 +1860,7 @@ function evoGerarTexto() {
       linhas.push('Hemodinâmica: ' + parts.join(' | '));
       linhas.push('');
     }
-
-    // Renal
+// Renal
     var renal = [];
     function addR(lbl,key){ var v=evoVal(key); if(v) renal.push(lbl+': '+v); }
     var bhLbl = (byId('evo_bh_label') ? byId('evo_bh_label').textContent : 'BH');
@@ -3641,9 +1872,7 @@ function evoGerarTexto() {
     var trsTipo = evoVal('evo_trs_tipo');
     if (trs) renal.push('TRS: '+trs + (trs==='sim' && trsTipo ? ' ('+trsTipo+')' : ''));
     if (renal.length) { linhas.push('Renal/Metabólico: ' + renal.join(' | ')); linhas.push(''); }
-
-    
-    var meds = evoVal('evo_meds');
+var meds = evoVal('evo_meds');
     if (meds) {
         linhas.push('Medicações em uso: ' + meds);
         linhas.push('');
@@ -3669,10 +1898,7 @@ function evoGerarTexto() {
     var pctd = evoVal('evo_pct_data'); if (pctd) marc.push('Data PCT: '+pctd);
     if (marc.length) infParts.push('Marcadores: '+marc.join(' | '));
     if (infParts.length) { linhas.push('Infecção: ' + infParts.join(' | ')); linhas.push(''); }
-
-    
-    
-    // Neuro (igual admissão)
+// Neuro (igual admissão)
     var neuroParts = [];
 
     var gtot = evoVal('evo_glasgow_total');
@@ -3692,8 +1918,7 @@ function evoGerarTexto() {
         neuroParts.push('Delirium: sim' + (tipos.length ? ' ('+tipos.join(', ')+')' : ''));
       }
     }
-
-    var analgSel2 = qs('input[name="evo_analg_sed"]:checked');
+var analgSel2 = qs('input[name="evo_analg_sed"]:checked');
     if (analgSel2) {
       if (analgSel2.value === 'nao') neuroParts.push('Analgesia/sedação: não');
       if (analgSel2.value === 'sim') {
@@ -3712,7 +1937,6 @@ function evoGerarTexto() {
     }
 
     if (neuroParts.length) { linhas.push('Neuro/Sedação: ' + neuroParts.join(' | ')); linhas.push(''); }
-
 // Hema/TEV
     var hema = [];
     function addHe(lbl,key){ var v=evoVal(key); if(v) hema.push(lbl+': '+v); }
@@ -3720,8 +1944,7 @@ function evoGerarTexto() {
     var tev = evoVal('evo_tev'); 
     if (tev) hema.push('Profilaxia TEV: '+tev + (tev==='nao' && evoVal('evo_tev_just') ? ' ('+evoVal('evo_tev_just')+')' : ''));
     if (hema.length) { linhas.push('Hematológico/Trombose: ' + hema.join(' | ')); linhas.push(''); }
-
-    // Invasivos
+// Invasivos
     var inv = [];
     function addI(lbl, txt){ if (txt) inv.push(lbl+': '+txt); }
     addI('CVC', [evoVal('evo_cvc_local'), evoVal('evo_cvc_dia') && ('dia '+evoVal('evo_cvc_dia'))].filter(Boolean).join(' | '));
@@ -3732,8 +1955,7 @@ function evoGerarTexto() {
     if (evoVal('evo_drenos_outros')) addI('Drenos/outros', evoVal('evo_drenos_outros'));
     var ret = evoVal('evo_retirados'); if (ret) inv.push('Retirados: '+ret);
     if (inv.length) { linhas.push('Invasivos/Dispositivos:'); for (var ii=0; ii<inv.length; ii++) linhas.push('- '+inv[ii]); linhas.push(''); }
-
-    // Nutrição
+// Nutrição
     var nut = [];
     function addNu(lbl,key){ var v=evoVal(key); if(v) nut.push(lbl+': '+v); }
     addNu('VET pleno kcal/dia','evo_vet_kcal');
@@ -3769,8 +1991,7 @@ function evoGerarTexto() {
     if (profUlcera) nut.push('Profilaxia úlcera estresse: '+profUlcera);
     
     if (nut.length) { linhas.push('Nutrição/GI: ' + nut.join(' | ')); linhas.push(''); }
-
-    var outros = evoVal('evo_outros_labs'); if (outros) { linhas.push('Outros exames relevantes:'); linhas.push(outros); linhas.push(''); }
+var outros = evoVal('evo_outros_labs'); if (outros) { linhas.push('Outros exames relevantes:'); linhas.push(outros); linhas.push(''); }
 
     // Interconsultas
     function ic(nome, txtKey){ var v=evoVal(nome); var t=evoVal(txtKey); if (v==='sim') return 'sim' + (t ? ' ('+t+')' : ''); if (v==='nao') return 'não'; return ''; }
@@ -3783,8 +2004,7 @@ function evoGerarTexto() {
 
     var imp = evoVal('evo_impressao'); if (imp) { linhas.push('Impressão clínica:'); linhas.push(imp); linhas.push(''); }
     var pl = evoVal('evo_plano_24h'); if (pl) { linhas.push('Plano/metas 24h:'); linhas.push(pl); linhas.push(''); }
-
-    var ta = byId('textoGeradoEvo');
+var ta = byId('textoGeradoEvo');
     if (ta) ta.value = linhas.join('\n');
     evoAbrirPainelTexto();
   }
@@ -3810,14 +2030,13 @@ function evoGerarTexto() {
       dth.addEventListener('change', function(){
         var v = dth.value || '';
         if (da && v.length >= 10) da.value = v.substr(0,10);
-        evoAtualizarDiaUTI();
+        atualizarDiasInternacao(); // Changed from evoAtualizarDiaUTI
         evoRenderHistory();
     evoUpdateBigHeader();
     bindEvoHeaderLiveUpdate();
   });
     }
-
-    // Auto-preencher data/hora da evolução (somente se vazio)
+// Auto-preencher data/hora da evolução (somente se vazio)
     var evoArea = byId('evolucaoArea');
     if (evoArea) setNowIfEmpty('evo_data', evoArea);
 
@@ -3836,9 +2055,7 @@ function evoGerarTexto() {
     evoAtualizarDiaUTI();
     evoApply();
   });
-
-
-  // ===== Evolução diária: helpers (não mexe na admissão) =====
+// ===== Evolução diária: helpers (não mexe na admissão) =====
   function evoToggleBox(id, show) {
     var el = document.getElementById(id);
     if (!el) return;
@@ -3860,8 +2077,7 @@ function evoGerarTexto() {
       el.classList.add('hidden');
     }
   }
-
-  function evoToggleRespSuporte(valor) {
+function evoToggleRespSuporte(valor) {
     evoToggleBox('evo_resp_vm', false);
     evoToggleBox('evo_resp_venturi', false);
     evoToggleBox('evo_resp_cn', false);
@@ -3884,8 +2100,7 @@ function evoGerarTexto() {
   function evoToggleAnalgesia(valor) {
     evoToggleBox('evo_analgesia_lista', valor === 'sim');
   }
-
-  function evoCopiarIdentificacao() {
+function evoCopiarIdentificacao() {
     // usa a função já existente que copia dados da admissão para a evolução (v57+)
     if (typeof evoAutoFromAdmissao === 'function') evoAutoFromAdmissao();
     // garantir data/hora se estiver vazio
@@ -3905,8 +2120,7 @@ function evoGerarTexto() {
     var base = (adm && adm.value) ? adm.value : 'sem_admissao';
     return 'INTENSIVALE_EVOHIST_' + base;
   }
-
-  function evoGetHistory() {
+function evoGetHistory() {
     try {
       var raw = localStorage.getItem(evoStorageKey());
       return raw ? JSON.parse(raw) : [];
@@ -3939,8 +2153,7 @@ function evoGerarTexto() {
   function evoApplyFields(data) {
     var area = byId('evolucaoArea');
     if (!area || !data) return;
-
-    var els = area.querySelectorAll('input, textarea, select');
+var els = area.querySelectorAll('input, textarea, select');
     for (var i=0;i<els.length;i++){
       var el = els[i];
       if (!el.name) continue;
@@ -3970,8 +2183,7 @@ function evoGerarTexto() {
       list.innerHTML = '<div style="opacity:.75;">Nenhuma evolução salva ainda.</div>';
       return;
     }
-
-    var html = '';
+var html = '';
     for (var i=0;i<hist.length;i++){
       var item = hist[i];
       var when = item.meta && item.meta.datahora ? item.meta.datahora : '(sem data/hora)';
@@ -3987,8 +2199,7 @@ function evoGerarTexto() {
     }
     list.innerHTML = html;
   }
-
-  function evoSalvarEvolucaoAtual() {
+function evoSalvarEvolucaoAtual() {
     var data = evoCollectFields();
     var turno = data.evo_turno || '';
     var dh = data.evo_data || '';
@@ -4002,8 +2213,7 @@ function evoGerarTexto() {
     
     alert('Evolução salva no histórico.');
   }
-
-  function evoNovaEvolucao() {
+function evoNovaEvolucao() {
     if (!confirm('Iniciar nova evolução?\n\nOs dados da evolução atual serão salvos e os campos serão limpos (mantendo identificação, HPP, dispositivos, ATBs e nutrição).')) return;
     
     // Salvar evolução atual em evolucao_last antes de limpar
@@ -4016,8 +2226,7 @@ function evoGerarTexto() {
 
     var area = document.getElementById('evolucaoArea');
     if (!area) return;
-
-    // LISTA DE CAMPOS QUE DEVEM SER MANTIDOS ENTRE EVOLUÇÕES
+// LISTA DE CAMPOS QUE DEVEM SER MANTIDOS ENTRE EVOLUÇÕES
     var manterCampos = [
       // Identificação (readonly e copiados da admissão)
       'evo_nome', 'evo_idade', 'evo_sexo', 'evo_peso', 'evo_altura', 'evo_imc', 'evo_pbw',
@@ -4051,8 +2260,7 @@ function evoGerarTexto() {
       // Medicações em uso
       'evo_meds'
     ];
-
-    // Limpar campos editáveis da evolução, EXCETO os que devem ser mantidos
+// Limpar campos editáveis da evolução, EXCETO os que devem ser mantidos
     var els = area.querySelectorAll('input, textarea, select');
     for (var i=0;i<els.length;i++){
       var el = els[i];
@@ -4066,8 +2274,7 @@ function evoGerarTexto() {
       if (el.type === 'radio' || el.type === 'checkbox') el.checked = false;
       else el.value = '';
     }
-
-    // Fechar todos os blocos condicionais
+// Fechar todos os blocos condicionais
     var toHide = [
       'evo_resp_vm','evo_resp_venturi','evo_resp_cn','evo_resp_mr',
       'evo_gaso_fields',
@@ -4088,7 +2295,6 @@ function evoGerarTexto() {
 
     // Atualizar Dia de UTI
     try { evoAtualizarDiaUTI(); } catch(e) {}
-
     // Ir para o topo da evolução
     try { area.scrollIntoView({behavior:'smooth', block:'start'}); } catch(e) { area.scrollIntoView(true); }
   
@@ -4111,8 +2317,7 @@ function evoGerarTexto() {
     evoSetHistory(hist);
     evoRenderHistory();
   }
-
-  function evoImprimirEvolucaoAtual() {
+function evoImprimirEvolucaoAtual() {
     // imprime usando o gerador de texto, se existir
     var texto = '';
     try { texto = gerarTextoEvolucao ? gerarTextoEvolucao() : ''; } catch(e) {}
@@ -4128,8 +2333,7 @@ function evoGerarTexto() {
     w.focus();
     w.print();
   }
-
-  function evoImprimirEvolucao(idx) {
+function evoImprimirEvolucao(idx) {
     var hist = evoGetHistory();
     if (!hist[idx]) return;
     var texto = '';
@@ -4151,8 +2355,7 @@ function evoGerarTexto() {
     w.focus();
     w.print();
   }
-
-  function evoUpdateBigHeader() {
+function evoUpdateBigHeader() {
     var area = document.getElementById('evolucaoArea');
     if (!area) return;
     var dh = area.querySelector('[name="evo_data"]');
@@ -4176,8 +2379,7 @@ function evoGerarTexto() {
         }
       }
     } catch(e) {}
-
-    var t = turno ? turno.value : '';
+var t = turno ? turno.value : '';
     var labelTurno = t ? (t === 'diurna' ? 'Diurna' : (t === 'noturna' ? 'Noturna' : t)) : '';
     txt.textContent = (showDh ? showDh : 'Sem data/hora') + (labelTurno ? ' — ' + labelTurno : '');
   }
@@ -4198,9 +2400,7 @@ function evoGerarTexto() {
       }
     }, true);
   }
-
-
-  function evoAutoFromAdmissao() {
+function evoAutoFromAdmissao() {
     // Copiar identificação completa + HPP/Alergias/Cirurgias/Medicações da admissão
     function byName(n){ return document.querySelector('[name="'+n+'"]'); }
     function vName(n){ var el = byName(n); return el ? (el.value || '') : ''; }
@@ -4226,8 +2426,7 @@ function evoGerarTexto() {
       pbwVal = pbwEl ? (pbwEl.value || '') : '';
     }
     setByName('evo_pbw', pbwVal);
-
-    // HPP / Alergias / Cirurgias / Medicações
+// HPP / Alergias / Cirurgias / Medicações
     setByName('evo_comorbidades', vName('hpp'));
     setByName('evo_alergias', vName('alergias'));
     setByName('evo_cirurgias', vName('cirurgias'));
@@ -4246,8 +2445,7 @@ function evoGerarTexto() {
 
     { id: "custom", nome: "Personalizada (preencher kcal/mL e prot/mL)", kcal_per_ml: 0, prot_per_ml: 0 }
   ];
-
-  function evoInitDietas() {
+function evoInitDietas() {
     var sel = document.getElementById("evo_dieta_select");
     if (!sel) return;
 
@@ -4278,8 +2476,7 @@ function evoGerarTexto() {
     }
     return null;
   }
-
-  function evoNum(val) {
+function evoNum(val) {
     var n = parseFloat(String(val || "").replace(",", "."));
     return isNaN(n) ? 0 : n;
   }
@@ -4306,7 +2503,6 @@ function evoGerarTexto() {
 
     var dieta = evoGetSelectedDieta();
     var kcalML = 0, protML = 0;
-
     if (dieta) {
       if (dieta.id === "custom") {
         kcalML = evoNum(g("evo_dieta_kcal_ml"));
@@ -4332,8 +2528,7 @@ function evoGerarTexto() {
     s("evo_pct_kcal", (vetKcal > 0 && kcalAdmin > 0) ? pctK.toFixed(1) : "");
     s("evo_pct_prot", (vetProt > 0 && protAdmin > 0) ? pctP.toFixed(1) : "");
   }
-
-  function evoBindNutricao() {
+function evoBindNutricao() {
     var area = document.getElementById("evolucaoArea");
     if (!area) return;
 
@@ -4358,14 +2553,11 @@ function evoGerarTexto() {
   });
 </script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
 <script>
     // --- 1. FUNÇÃO: EVOLUÇÃO DIÁRIA (Turno Seguinte) ---
     function iniciarEvolucaoDiaria() {
         if(!confirm("Iniciar EVOLUÇÃO DIÁRIA?\n\nIsso manterá o cadastro, histórico e diagnósticos, limpando apenas os dados do momento (Sinais Vitais, Exames).")) return;
-
-        // LISTA VIP: Tudo o que estiver aqui será MANTIDO.
+// LISTA VIP: Tudo o que estiver aqui será MANTIDO.
         // Coloquei variações de nomes comuns para garantir que não apague nada importante.
         const manterDados = [
             // Identificação
@@ -4390,8 +2582,7 @@ function evoGerarTexto() {
             // Nutrição (Muitas vezes a dieta se mantém)
             "dieta_tipo", "via_alimentacao"
         ];
-
-        const inputs = document.querySelectorAll("input, textarea, select");
+const inputs = document.querySelectorAll("input, textarea, select");
 
         inputs.forEach(el => {
             const nome = el.name; 
@@ -4414,8 +2605,7 @@ function evoGerarTexto() {
                 el.selectedIndex = 0;
             }
         });
-
-        // Atualiza dias de internação
+// Atualiza dias de internação
         atualizarDiasInternacao();
         
         // Simula cliques para recalcular (IMC, Dietas, etc)
@@ -4426,12 +2616,11 @@ function evoGerarTexto() {
     }
 
     // --- 2. CALCULAR DIAS AUTOMATICAMENTE ---
-    function atualizarDiasInternacao() {
+    function atualizarDiasInternacao() { // Changed from evoAtualizarDiaUTI
         const campoData = document.querySelector("input[name='data_admissao']") || document.getElementById("data_admissao");
         // Tenta achar o campo alvo (pode ser dias_internacao, dias_uti, etc)
         const campoDias = document.querySelector("input[name='dias_internacao']") || document.getElementById("dias_internacao") || document.querySelector("input[name='dias_uti']");
-
-        if (campoData && campoData.value && campoDias) {
+if (campoData && campoData.value && campoDias) {
             const dataAdm = new Date(campoData.value);
             const hoje = new Date();
             dataAdm.setHours(0,0,0,0);
@@ -4442,8 +2631,7 @@ function evoGerarTexto() {
             campoDias.value = diffDays; 
         }
     }
-
-    // --- 3. SALVAR E HISTÓRICO ---
+// --- 3. SALVAR E HISTÓRICO ---
     function salvarEvolucao() {
         const nomePct = document.getElementsByName("nome")[0]?.value || "Paciente";
         const idUnico = "evo_" + new Date().getTime();
@@ -4465,8 +2653,7 @@ function evoGerarTexto() {
                 conteudo[chave] = el.value;
             }
         });
-
-        // Usar prefixo do leito atual
+// Usar prefixo do leito atual
         const idUnicoLeito = "evo_" + ctiAtual + "_" + leitoAtual + "_" + new Date().getTime();
         const pacote = { id: idUnicoLeito, data: new Date().toLocaleString(), nome: nomePct, cti: ctiAtual, leito: leitoAtual, dados: conteudo };
         
@@ -4481,8 +2668,7 @@ function evoGerarTexto() {
         
         alert("Salvo com sucesso!");
     }
-
-    function novoPaciente() {
+function novoPaciente() {
         if (!confirm("⚠️ ATENÇÃO: Iniciar NOVO PACIENTE?\n\nTodos os dados atuais serão apagados.\nAs evoluções salvas na lista serão mantidas.")) return;
         
         // Limpar todos os campos do formulário
@@ -4525,8 +2711,7 @@ function evoGerarTexto() {
         
         alert("Formulário limpo! Pronto para novo paciente.");
     }
-
-    function listarEvolucoes() {
+function listarEvolucoes() {
         const container = document.getElementById("lista_evolucoes");
         if (!container) return;
         
@@ -4542,8 +2727,7 @@ function evoGerarTexto() {
         }
         
         container.innerHTML = "<h4 style='color:#2e7d32; margin:5px 0 10px; font-size:14px;'>📋 Evoluções deste Leito:</h4>";
-
-        chaves.forEach(key => {
+chaves.forEach(key => {
             let item;
             try { item = JSON.parse(localStorage.getItem(key)); } catch(e){ return; }
             
@@ -4560,8 +2744,7 @@ function evoGerarTexto() {
             container.appendChild(div);
         });
     }
-
-    function carregarEvolucao(key) {
+function carregarEvolucao(key) {
         if(!confirm("Carregar esta evolução?\n\nOs dados atuais serão substituídos.")) return;
         
         try {
@@ -4575,8 +2758,7 @@ function evoGerarTexto() {
                 else el.value = "";
                 if(el.tagName === 'SELECT') el.selectedIndex = 0;
             });
-
-            // Carregar dados
+// Carregar dados
             for (const [chave, valor] of Object.entries(dados)) {
                 if (chave.includes("::")) {
                     const [nome, val] = chave.split("::");
@@ -4600,8 +2782,7 @@ function evoGerarTexto() {
             alert("Erro ao carregar: " + e.message);
         }
     }
-
-    function deletarEvolucao(key) {
+function deletarEvolucao(key) {
         if(confirm("Excluir esta evolução?")) {
             localStorage.removeItem(key);
             listarEvolucoes();
@@ -4623,8 +2804,7 @@ function evoGerarTexto() {
         
         return evolucoes;
     }
-
-    // Função para limpar evoluções do leito atual
+// Função para limpar evoluções do leito atual
     function limparEvolucoesLeito() {
         const prefixoLeito = "evo_" + ctiAtual + "_" + leitoAtual + "_";
         const chaves = Object.keys(localStorage).filter(k => k.startsWith(prefixoLeito));
@@ -4638,8 +2818,7 @@ function evoGerarTexto() {
     document.addEventListener('DOMContentLoaded', function() {
         listarEvolucoes();
     });
-
-    // --- 4. EXPORTAR PDF ---
+// --- 4. EXPORTAR PDF ---
     function exportarPDF() {
         const elemento = document.body;
         const nome = document.getElementsByName("nome")[0]?.value || "Paciente";
@@ -4657,8 +2836,7 @@ function evoGerarTexto() {
 
         const controles = document.querySelector('.no-print');
         if(controles) controles.style.display = 'none';
-
-        html2pdf().set(opt).from(elemento).save().then(() => {
+html2pdf().set(opt).from(elemento).save().then(() => {
             if(controles) controles.style.display = 'block';
         });
     }
@@ -4674,7 +2852,6 @@ var ctiAtual = 'CTI1';
 var leitoAtual = 1;
 
 // ========== FUNÇÕES DE AUTENTICAÇÃO ==========
-
 function fazerLogin() {
     var email = document.getElementById('loginEmail').value;
     var senha = document.getElementById('loginPassword').value;
@@ -4687,7 +2864,7 @@ function fazerLogin() {
     
     errorDiv.textContent = 'Entrando...';
     
-    auth.signInWithEmailAndPassword(email, senha)
+    window.auth.signInWithEmailAndPassword(email, senha) // Acessa auth via window
         .then(function(userCredential) {
             errorDiv.textContent = '';
         })
@@ -4704,48 +2881,13 @@ function fazerLogin() {
             }
         });
 }
-
 function fazerLogout() {
     if (confirm('Deseja realmente sair?')) {
-        auth.signOut();
+        window.auth.signOut(); // Acessa auth via window
     }
 }
-
-// Listener de mudança de autenticação
-auth.onAuthStateChanged(function(user) {
-    if (user) {
-        currentUser = user;
-        
-        // Verificar se é admin
-        db.collection('usuarios').doc(user.uid).get()
-            .then(function(doc) {
-                if (doc.exists) {
-                    isAdmin = doc.data().admin === true;
-                    var nome = doc.data().nome || user.email;
-                    mostrarSistema(nome);
-                } else {
-                    // Criar registro de usuário se não existir
-                    db.collection('usuarios').doc(user.uid).set({
-                        email: user.email,
-                        nome: user.email.split('@')[0],
-                        admin: false,
-                        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    isAdmin = false;
-                    mostrarSistema(user.email);
-                }
-            })
-            .catch(function(error) {
-                console.error('Erro ao buscar usuário:', error);
-                mostrarSistema(user.email);
-            });
-    } else {
-        currentUser = null;
-        isAdmin = false;
-        document.getElementById('loginOverlay').style.display = 'flex';
-        document.getElementById('mainContent').style.display = 'none';
-    }
-});
+// Listener de mudança de autenticação - AGORA ESTÁ DENTRO DO MÓDULO TYPE="MODULE"
+// auth.onAuthStateChanged já está adaptado lá.
 
 function mostrarSistema(nomeUsuario) {
     document.getElementById('loginOverlay').style.display = 'none';
@@ -4758,7 +2900,7 @@ function mostrarSistema(nomeUsuario) {
     }
     
     // Mostrar botões de admin
-    if (isAdmin) {
+    if (window.isAdmin) { // Acessa isAdmin via window
         var adminBtns = document.querySelectorAll('.admin-only');
         adminBtns.forEach(function(btn) {
             btn.style.display = 'inline-block';
@@ -4772,10 +2914,9 @@ function mostrarSistema(nomeUsuario) {
     atualizarLeitos();
     iniciarListenerTempoReal();
 }
-
 function testarConexaoFirebase() {
     // Tenta ler uma coleção para verificar se tem permissão
-    db.collection('leitos').limit(1).get()
+    window.db.collection('leitos').limit(1).get() // Acessa db via window
         .then(function() {
             console.log('✅ Conexão Firebase OK');
             atualizarSyncStatus('ok');
@@ -4797,12 +2938,11 @@ function testarConexaoFirebase() {
             alert(msg);
         });
 }
-
 // ========== FUNÇÕES DE SINCRONIZAÇÃO COM FIREBASE ==========
 
 function iniciarListenerTempoReal() {
     // Listener para leitos
-    db.collection('leitos').onSnapshot(function(snapshot) {
+    window.db.collection('leitos').onSnapshot(function(snapshot) { // Acessa db via window
         // Atualizar lista de leitos quando houver mudanças
         atualizarSelectLeitos();
         atualizarSyncStatus('ok');
@@ -4827,11 +2967,9 @@ function atualizarSyncStatus(status) {
         syncDiv.textContent = '⏳ Salvando...';
     }
 }
-
 function getChaveLeitoFirebase() {
     return ctiAtual + '_' + leitoAtual;
 }
-
 // Salvar leito no Firebase
 function salvarLeitoAtual() {
     var inputs = document.querySelectorAll("input, textarea, select");
@@ -4856,12 +2994,12 @@ function salvarLeitoAtual() {
     
     // Adicionar metadados
     conteudo._ultimaAtualizacao = new Date().toISOString();
-    conteudo._atualizadoPor = currentUser ? currentUser.email : 'desconhecido';
+    conteudo._atualizadoPor = window.currentUser ? window.currentUser.email : 'desconhecido'; // Acessa currentUser via window
     
     atualizarSyncStatus('pending');
     
     // Salvar no Firebase
-    db.collection('leitos').doc(getChaveLeitoFirebase()).set(conteudo)
+    window.db.collection('leitos').doc(getChaveLeitoFirebase()).set(conteudo) // Acessa db via window
         .then(function() {
             atualizarSyncStatus('ok');
         })
@@ -4872,7 +3010,6 @@ function salvarLeitoAtual() {
             localStorage.setItem('LEITO_' + ctiAtual + '_' + leitoAtual, JSON.stringify(conteudo));
         });
 }
-
 // Carregar leito do Firebase
 function carregarLeito() {
     var chave = getChaveLeitoFirebase();
@@ -4892,7 +3029,7 @@ function carregarLeito() {
         }
     });
     
-    db.collection('leitos').doc(chave).get()
+    window.db.collection('leitos').doc(chave).get() // Acessa db via window
         .then(function(doc) {
             if (!doc.exists) {
                 // Leito vazio
@@ -4922,7 +3059,6 @@ function carregarLeito() {
             }
         });
 }
-
 function aplicarDadosFormulario(conteudo) {
     // Aplicar campos com ::
     for (var chaveItem in conteudo) {
@@ -4948,7 +3084,7 @@ function aplicarDadosFormulario(conteudo) {
         } else if (el.type === 'radio') {
             el.checked = (conteudo[key] !== null && el.value === conteudo[key]);
         } else {
-            el.value = conteudo[key] !== null ? conteudo[key] : '';
+            el.value = conteudo[key] !== null && conteudo[key] !== undefined ? conteudo[key] : '';
         }
     });
     
@@ -4959,7 +3095,6 @@ function aplicarDadosFormulario(conteudo) {
     // Ativar toggles dos campos condicionais
     ativarTogglesCondicionais();
 }
-
 function ativarTogglesCondicionais() {
     // Transfusões
     ['ch', 'plaq', 'plasma', 'crio'].forEach(function(tipo) {
@@ -5116,7 +3251,6 @@ function ativarTogglesCondicionais() {
         else dialiseWrap.classList.add('hidden');
     }
 }
-
 function preencherDataHoraAtual() {
     var dataAdm = document.getElementById('datahora_admissao');
     if (dataAdm) {
@@ -5136,14 +3270,13 @@ function atualizarLeitos() {
     if (!selCTI || !selLeito) return;
     
     // Salvar leito atual antes de trocar
-    if (currentUser) {
+    if (window.currentUser) { // Acessa currentUser via window
         salvarLeitoAtual();
     }
     
     ctiAtual = selCTI.value;
     atualizarSelectLeitos();
 }
-
 function atualizarSelectLeitos() {
     var selLeito = document.getElementById('seletorLeito');
     if (!selLeito) return;
@@ -5152,7 +3285,7 @@ function atualizarSelectLeitos() {
     var leitoSelecionadoAntes = selLeito.value;
     
     // Buscar dados de todos os leitos
-    db.collection('leitos').get()
+    window.db.collection('leitos').get() // Acessa db via window
         .then(function(snapshot) {
             var dadosLeitos = {};
             snapshot.forEach(function(doc) {
@@ -5209,7 +3342,6 @@ function atualizarSelectLeitos() {
             atualizarTitulo();
         });
 }
-
 function trocarLeito() {
     // Salvar leito atual antes de trocar
     salvarLeitoAtual();
@@ -5239,7 +3371,6 @@ function atualizarStatusLeito(msg) {
 }
 
 // ========== EVOLUÇÕES COM FIREBASE ==========
-
 function listarEvolucoes() {
     var container = document.getElementById('lista_evolucoes');
     if (!container) return;
@@ -5249,7 +3380,7 @@ function listarEvolucoes() {
     var prefixo = ctiAtual + '_' + leitoAtual;
     
     // Buscar evoluções sem orderBy para evitar necessidade de índice
-    db.collection('evolucoes')
+    window.db.collection('evolucoes') // Acessa db via window
         .where('leitoId', '==', prefixo)
         .get()
         .then(function(snapshot) {
@@ -5281,7 +3412,6 @@ function listarEvolucoes() {
             evolucoes.forEach(function(item) {
                 var div = document.createElement('div');
                 div.style.cssText = 'border: 1px solid #c8e6c9; border-radius: 6px; padding: 8px 12px; margin: 5px 0; font-size: 13px; display: flex; justify-content: space-between; align-items: center; background:#fff;';
-                
                 var dataStr = item.data || '';
                 var nome = item.nome || 'Sem nome';
                 var turno = item.dados && item.dados.evo_turno ? ' (' + item.dados.evo_turno + ')' : '';
@@ -5301,11 +3431,10 @@ function listarEvolucoes() {
             container.innerHTML = '<div style="color: #c62828; font-size: 13px;">Erro ao carregar evoluções: ' + error.message + '</div>';
         });
 }
-
 function carregarEvolucaoFirebase(docId) {
     if (!confirm('Visualizar esta evolução?\n\nOs dados atuais da evolução serão substituídos.')) return;
     
-    db.collection('evolucoes').doc(docId).get()
+    window.db.collection('evolucoes').doc(docId).get() // Acessa db via window
         .then(function(doc) {
             if (doc.exists) {
                 var dados = doc.data().dados;
@@ -5323,11 +3452,10 @@ function carregarEvolucaoFirebase(docId) {
 
 // Variável para armazenar ID da evolução em edição
 var evolucaoEmEdicao = null;
-
 function editarEvolucaoFirebase(docId) {
     if (!confirm('Editar esta evolução?\n\nVocê poderá modificar e salvar novamente.')) return;
     
-    db.collection('evolucoes').doc(docId).get()
+    window.db.collection('evolucoes').doc(docId).get() // Acessa db via window
         .then(function(doc) {
             if (doc.exists) {
                 var dados = doc.data().dados;
@@ -5348,7 +3476,6 @@ function editarEvolucaoFirebase(docId) {
             alert('Erro ao carregar: ' + error.message);
         });
 }
-
 // Função para abrir evolução sem limpar campos (para visualizar/editar)
 function abrirEvolucaoSemLimpar() {
     var area = document.getElementById('evolucaoArea');
@@ -5357,7 +3484,6 @@ function abrirEvolucaoSemLimpar() {
     try { area.scrollIntoView({behavior:'smooth', block:'start'}); }
     catch(e) { area.scrollIntoView(true); }
 }
-
 // Função para aplicar dados especificamente na área de evolução
 function aplicarDadosEvolucao(dados) {
     var area = document.getElementById('evolucaoArea');
@@ -5396,11 +3522,10 @@ function aplicarDadosEvolucao(dados) {
     // Ativa os toggles condicionais
     ativarTogglesCondicionais();
 }
-
 function deletarEvolucaoFirebase(docId) {
     if (!confirm('Excluir esta evolução?')) return;
     
-    db.collection('evolucoes').doc(docId).delete()
+    window.db.collection('evolucoes').doc(docId).delete() // Acessa db via window
         .then(function() {
             listarEvolucoes();
         })
@@ -5408,7 +3533,6 @@ function deletarEvolucaoFirebase(docId) {
             alert('Erro ao excluir: ' + error.message);
         });
 }
-
 // Atualizar função salvarEvolucao para usar Firebase
 var salvarEvolucaoOriginal = typeof salvarEvolucao === 'function' ? salvarEvolucao : null;
 function salvarEvolucao() {
@@ -5452,8 +3576,8 @@ function salvarEvolucao() {
         leito: leitoAtual,
         nome: nomePct,
         data: new Date().toLocaleString('pt-BR'),
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        salvoPor: currentUser ? currentUser.email : 'desconhecido',
+        timestamp: window.serverTimestamp(), // Usa serverTimestamp via window
+        salvoPor: window.currentUser ? window.currentUser.email : 'desconhecido', // Acessa currentUser via window
         dados: conteudo
     };
     
@@ -5470,9 +3594,9 @@ function salvarEvolucao() {
     if (evolucaoEmEdicao) {
         // Atualizar evolução existente
         evolucao.editadoEm = new Date().toLocaleString('pt-BR');
-        evolucao.editadoPor = currentUser ? currentUser.email : 'desconhecido';
+        evolucao.editadoPor = window.currentUser ? window.currentUser.email : 'desconhecido'; // Acessa currentUser via window
         
-        db.collection('evolucoes').doc(evolucaoEmEdicao).update(evolucao)
+        window.db.collection('evolucoes').doc(evolucaoEmEdicao).update(evolucao) // Acessa db via window
             .then(function() {
                 atualizarSyncStatus('ok');
                 salvarLeitoAtual();
@@ -5489,7 +3613,7 @@ function salvarEvolucao() {
             });
     } else {
         // Criar nova evolução
-        db.collection('evolucoes').add(evolucao)
+        window.db.collection('evolucoes').add(evolucao) // Acessa db via window
             .then(function() {
                 atualizarSyncStatus('ok');
                 salvarLeitoAtual();
@@ -5503,7 +3627,6 @@ function salvarEvolucao() {
             });
     }
 }
-
 // ========== ALTAS COM FIREBASE ==========
 
 function darAlta() {
@@ -5528,7 +3651,6 @@ function darAlta() {
     // Atualizar modal com o resumo
     atualizarModalResumoAlta(resumo, nomePaciente, false);
 }
-
 function coletarDadosParaResumo() {
     var dados = {};
     
@@ -5615,7 +3737,6 @@ function coletarDadosParaResumo() {
     
     return dados;
 }
-
 async function gerarResumoAltaIA(dados, nomePaciente) {
     var prompt = `Você é um médico intensivista experiente. Gere um RESUMO DE ALTA DE UTI conciso e profissional com base nos dados abaixo.
 
@@ -5674,8 +3795,7 @@ Por favor, gere um RESUMO DE ALTA estruturado com:
 8. **ORIENTAÇÕES PÓS-ALTA** - IMPORTANTE: Base as orientações no PLANO/METAS 24H acima. Transforme as metas do plano em orientações específicas para o paciente/família (ex: se o plano menciona "manter oxigenioterapia", oriente "manter oxigênio domiciliar conforme prescrito"). Inclua também sinais de alerta gerais.
 
 Use linguagem médica profissional, seja objetivo e conciso. O texto deve estar pronto para ser copiado e colado no sistema hospitalar.`;
-
-    try {
+try {
         var response = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
             headers: {
@@ -5704,7 +3824,6 @@ Use linguagem médica profissional, seja objetivo e conciso. O texto deve estar 
         atualizarModalResumoAlta(resumoManual, nomePaciente, true);
     }
 }
-
 function gerarResumoManual(dados) {
     var linhas = [];
     var hoje = new Date();
@@ -5887,7 +4006,6 @@ function gerarResumoManual(dados) {
     
     return linhas.join("\n");
 }
-
 function mostrarModalResumoAlta(nomePaciente, loading) {
     // Criar modal se não existir
     var modal = document.getElementById('modalResumoAlta');
@@ -5924,7 +4042,6 @@ function mostrarModalResumoAlta(nomePaciente, loading) {
     document.getElementById('resumoAltaNome').textContent = nomePaciente;
     modal.style.display = 'flex';
 }
-
 function atualizarModalResumoAlta(resumo, nomePaciente, isManual) {
     document.getElementById('resumoAltaTexto').value = resumo;
 }
@@ -5951,7 +4068,6 @@ function confirmarAltaComResumo() {
     fecharModalResumoAlta();
     executarAlta(nomePaciente);
 }
-
 function executarAlta(nomePaciente) {
     // Coletar dados atuais
     var inputs = document.querySelectorAll("input, textarea, select");
@@ -5985,8 +4101,8 @@ function executarAlta(nomePaciente) {
         leito: leitoAtual,
         dataAlta: new Date().toLocaleString('pt-BR'),
         dataAdmissao: conteudo.datahora_admissao || '',
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        altaDadaPor: currentUser ? currentUser.email : 'desconhecido',
+        timestamp: window.serverTimestamp(), // Usa serverTimestamp via window
+        altaDadaPor: window.currentUser ? window.currentUser.email : 'desconhecido', // Acessa currentUser via window
         resumoAlta: resumoAlta,
         dados: conteudo
     };
@@ -5994,16 +4110,16 @@ function executarAlta(nomePaciente) {
     atualizarSyncStatus('pending');
     
     // Salvar na coleção de altas
-    db.collection('altas').add(registroAlta)
+    window.db.collection('altas').add(registroAlta) // Acessa db via window
         .then(function() {
             // Excluir todas as evoluções deste leito
-            return db.collection('evolucoes')
+            return window.db.collection('evolucoes') // Acessa db via window
                 .where('leitoId', '==', prefixoLeito)
                 .get();
         })
         .then(function(snapshot) {
             // Deletar cada evolução encontrada
-            var batch = db.batch();
+            var batch = window.db.batch(); // Acessa db via window
             snapshot.forEach(function(doc) {
                 batch.delete(doc.ref);
             });
@@ -6011,7 +4127,7 @@ function executarAlta(nomePaciente) {
         })
         .then(function() {
             // Limpar leito
-            return db.collection('leitos').doc(getChaveLeitoFirebase()).delete();
+            return window.db.collection('leitos').doc(getChaveLeitoFirebase()).delete(); // Acessa db via window
         })
         .then(function() {
             // Limpar localStorage das evoluções deste leito
@@ -6049,7 +4165,6 @@ function executarAlta(nomePaciente) {
             alert('Erro ao registrar alta: ' + error.message);
         });
 }
-
 function verAltas() {
     var modal = document.getElementById('modalAltas');
     if (modal) {
@@ -6062,7 +4177,6 @@ function fecharModalAltas() {
     var modal = document.getElementById('modalAltas');
     if (modal) modal.style.display = 'none';
 }
-
 function renderizarListaAltas(filtro) {
     var container = document.getElementById('listaAltas');
     var totalSpan = document.getElementById('totalAltas');
@@ -6070,7 +4184,7 @@ function renderizarListaAltas(filtro) {
     
     container.innerHTML = '<div style="text-align: center; padding: 40px;">Carregando...</div>';
     
-    db.collection('altas')
+    window.db.collection('altas') // Acessa db via window
         .orderBy('timestamp', 'desc')
         .limit(100)
         .get()
@@ -6128,7 +4242,6 @@ function renderizarListaAltas(filtro) {
             container.innerHTML = '<div style="color: #c62828; padding: 20px;">Erro ao carregar histórico de altas.</div>';
         });
 }
-
 function formatarData(dataStr) {
     if (!dataStr) return '-';
     try {
@@ -6146,9 +4259,8 @@ function filtrarAltas() {
     var termo = document.getElementById('buscaAltas').value;
     renderizarListaAltas(termo);
 }
-
 function verDetalhesAlta(idAlta) {
-    db.collection('altas').doc(idAlta).get()
+    window.db.collection('altas').doc(idAlta).get() // Acessa db via window
         .then(function(doc) {
             if (!doc.exists) {
                 alert('Registro não encontrado.');
@@ -6184,7 +4296,6 @@ function verDetalhesAlta(idAlta) {
             alert('Erro ao carregar detalhes: ' + error.message);
         });
 }
-
 function fecharModalDetalhes() {
     var modal = document.getElementById('modalDetalhesAlta');
     if (modal) modal.style.display = 'none';
@@ -6202,7 +4313,7 @@ function copiarDetalhesAlta() {
 function excluirAlta(idAlta) {
     if (!confirm('Excluir este registro de alta permanentemente?')) return;
     
-    db.collection('altas').doc(idAlta).delete()
+    window.db.collection('altas').doc(idAlta).delete() // Acessa db via window
         .then(function() {
             renderizarListaAltas();
         })
@@ -6220,12 +4331,10 @@ function verResumoCTI() {
         modal.style.display = 'flex';
     }
 }
-
 function fecharModalResumoCTI() {
     var modal = document.getElementById('modalResumoCTI');
     if (modal) modal.style.display = 'none';
 }
-
 function renderizarResumoCTI() {
     var container = document.getElementById('conteudoResumoCTI');
     var resumoOcupacao = document.getElementById('resumoOcupacao');
@@ -6233,7 +4342,7 @@ function renderizarResumoCTI() {
     
     container.innerHTML = '<div style="text-align: center; padding: 40px;">Carregando...</div>';
     
-    db.collection('leitos').get()
+    window.db.collection('leitos').get() // Acessa db via window
         .then(function(snapshot) {
             var dadosLeitos = {};
             snapshot.forEach(function(doc) {
@@ -6248,7 +4357,6 @@ function renderizarResumoCTI() {
             html += '<div style="margin-bottom: 30px;">';
             html += '<h3 style="color: #1565c0; border-bottom: 2px solid #1565c0; padding-bottom: 10px;">🏥 CTI 1</h3>';
             html += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px;">';
-            
             leitosCTI1.forEach(function(num) {
                 var info = obterInfoLeitoFirebase(dadosLeitos, 'CTI1', num);
                 totalLeitos++;
@@ -6282,7 +4390,6 @@ function renderizarResumoCTI() {
             container.innerHTML = '<div style="color: #c62828; padding: 20px;">Erro ao carregar resumo.</div>';
         });
 }
-
 function obterInfoLeitoFirebase(dadosLeitos, cti, num) {
     var chave = cti + '_' + num;
     var dados = dadosLeitos[chave];
@@ -6306,7 +4413,6 @@ function obterInfoLeitoFirebase(dadosLeitos, cti, num) {
         sexo: dados.sexo || ''
     };
 }
-
 function gerarCardLeito(cti, num, info) {
     var cor = info.ocupado ? '#ffebee' : '#e8f5e9';
     var borderCor = info.ocupado ? '#ef9a9a' : '#a5d6a7';
@@ -6338,7 +4444,6 @@ function gerarCardLeito(cti, num, info) {
     html += '</div>';
     return html;
 }
-
 function irParaLeito(cti, num) {
     fecharModalResumoCTI();
     
@@ -6357,7 +4462,7 @@ function irParaLeito(cti, num) {
 // ========== GESTÃO DE USUÁRIOS (ADMIN) ==========
 
 function verUsuarios() {
-    if (!isAdmin) {
+    if (!window.isAdmin) { // Acessa isAdmin via window
         alert('Acesso restrito a administradores.');
         return;
     }
@@ -6373,14 +4478,13 @@ function fecharModalUsuarios() {
     var modal = document.getElementById('modalUsuarios');
     if (modal) modal.style.display = 'none';
 }
-
 function renderizarListaUsuarios() {
     var container = document.getElementById('listaUsuarios');
     if (!container) return;
     
     container.innerHTML = '<div style="text-align: center; padding: 20px;">Carregando...</div>';
     
-    db.collection('usuarios').get()
+    window.db.collection('usuarios').get() // Acessa db via window
         .then(function(snapshot) {
             var html = '<table style="width: 100%; border-collapse: collapse; font-size: 14px;">';
             html += '<thead><tr style="background: #1565c0; color: white;">';
@@ -6405,7 +4509,6 @@ function renderizarListaUsuarios() {
             container.innerHTML = '<div style="color: #c62828; padding: 20px;">Erro ao carregar usuários.</div>';
         });
 }
-
 // ========== DIAS DE INTERNAÇÃO ==========
 
 function atualizarDiasInternacao() {
@@ -6437,9 +4540,8 @@ function atualizarDiasInternacao() {
 }
 
 // ========== EXPORTAR EXCEL ==========
-
 function exportarAltasExcel() {
-    db.collection('altas').orderBy('timestamp', 'desc').get()
+    window.db.collection('altas').orderBy('timestamp', 'desc').get() // Acessa db via window
         .then(function(snapshot) {
             if (snapshot.empty) {
                 alert('Não há altas para exportar.');
@@ -6471,9 +4573,7 @@ function exportarAltasExcel() {
             alert('Erro ao exportar: ' + error.message);
         });
 }
-
 // ========== NOVA EVOLUÇÃO ==========
-
 function evoNovaEvolucao() {
     if (!confirm('Iniciar nova evolução?\n\nOs campos serão limpos mantendo identificação e dados importantes.')) return;
     
@@ -6533,7 +4633,6 @@ function evoNovaEvolucao() {
     window.scrollTo(0, 0);
     alert('Nova evolução iniciada!');
 }
-
 // Permitir login com Enter
 document.addEventListener('DOMContentLoaded', function() {
     var loginPassword = document.getElementById('loginPassword');
@@ -6555,7 +4654,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-
 <!-- MODAL: Lista de Altas -->
 <div id="modalAltas" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center;">
 <div style="background: white; width: 90%; max-width: 1000px; max-height: 85%; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
@@ -6573,7 +4671,6 @@ document.addEventListener('DOMContentLoaded', function() {
 <div id="listaAltas" style="padding: 20px; overflow-y: auto; flex: 1;"></div>
 </div>
 </div>
-
 <!-- MODAL: Detalhes da Alta -->
 <div id="modalDetalhesAlta" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center;">
 <div style="background: white; width: 90%; max-width: 700px; max-height: 80%; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
@@ -6590,7 +4687,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 </div>
 </div>
-
 <!-- MODAL: Resumo CTI -->
 <div id="modalResumoCTI" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center;">
 <div style="background: white; width: 95%; max-width: 1200px; max-height: 90%; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
@@ -6602,27 +4698,4 @@ document.addEventListener('DOMContentLoaded', function() {
     <span id="resumoOcupacao" style="font-weight: bold;"></span>
     <button onclick="renderizarResumoCTI()" style="background: #00796b; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">🔄 Atualizar</button>
 </div>
-<div id="conteudoResumoCTI" style="padding: 20px; overflow-y: auto; flex: 1;"></div>
-</div>
-</div>
-
-<!-- MODAL: Gerenciar Usuários (Admin) -->
-<div id="modalUsuarios" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center;">
-<div style="background: white; width: 90%; max-width: 800px; max-height: 80%; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
-<div style="background: #7b1fa2; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center;">
-    <h2 style="margin: 0;">👥 Usuários do Sistema</h2>
-    <button onclick="fecharModalUsuarios()" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer;">&times;</button>
-</div>
-<div style="padding: 15px 20px; background: #f3e5f5;">
-    <p style="margin: 0; font-size: 13px; color: #666;">
-        Para adicionar novos usuários, acesse o <a href="https://console.firebase.google.com/project/passometrouti-a3188/authentication/users" target="_blank" style="color: #7b1fa2;">Firebase Console</a> → Authentication → Adicionar usuário.
-    </p>
-</div>
-<div id="listaUsuarios" style="padding: 20px; overflow-y: auto; flex: 1;"></div>
-</div>
-</div>
-
-</div><!-- Fecha mainContent -->
-
-</body>
-</html>
+<div id="conteudoResumoCTI" style="padding: 20px; overflow-y: auto; flex: 1
