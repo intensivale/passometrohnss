@@ -268,7 +268,15 @@ const firebaseConfig = {
   messagingSenderId: "664272211913",
   appId: "1:664272211913:web:66e30e6670126b3e51a218",
   measurementId: "G-K0ZB5KLRGY"
-}; // AJUSTE HNSS
+}/* ===========================
+   AJUSTE HNSS – CONFIGURAÇÃO CENTRAL
+   =========================== */
+
+// Identificador único da UTI
+const UTI_ID = "UTIHNSS";
+
+// Número fixo de leitos
+const TOTAL_LEITOS = 10;
 
 
 // Inicializar Firebase
@@ -313,8 +321,6 @@ let isAdmin = false;
     <label style="min-width: auto;">
         <span style="color: white; font-weight: bold;">CTI:</span>
         <select id="seletorCTI" onchange="atualizarLeitos()" style="font-size: 16px; padding: 10px 15px; font-weight: bold; min-width: 120px;">
-            <option value="CTI1">CTI 1</option>
-            <option value="CTI2">CTI 2</option>
         </select>
     </label>
     <label style="min-width: auto;">
