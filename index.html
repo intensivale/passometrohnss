@@ -15,7 +15,7 @@ body {
   background: #f2f4f6;
 }
 
-/* ========== LOGIN ========== */
+/* LOGIN */
 #loginOverlay {
   position: fixed;
   inset: 0;
@@ -81,7 +81,7 @@ body {
   margin-top: 10px;
 }
 
-/* ========== HEADER ========== */
+/* HEADER */
 .header {
   background: linear-gradient(135deg, #1a7a6f, #0f5f56);
   color: white;
@@ -107,7 +107,7 @@ body {
   margin-top: 10px;
 }
 
-/* ========== LEITOS ========== */
+/* LEITOS */
 .leitos {
   max-width: 1100px;
   margin: 30px auto;
@@ -122,12 +122,8 @@ body {
   border-radius: 12px;
   color: white;
   text-align: center;
-  cursor: pointer;
   box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-  transition: transform 0.2s;
 }
-
-.leito:hover { transform: translateY(-4px); }
 
 .leito h3 {
   margin-bottom: 10px;
@@ -138,7 +134,7 @@ body {
 .ocupado { background: #c62828; }
 .bloqueado { background: #f9a825; color: #333; }
 
-/* ========== FOOTER ========== */
+/* FOOTER */
 .footer {
   text-align: center;
   padding: 15px;
@@ -154,7 +150,6 @@ body {
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
 <script>
-/* ===== CONFIG FIREBASE – HNSS ===== */
 const firebaseConfig = {
   apiKey: "AIzaSyB7Mt4NsiXOam36i5MgClhKa-IOimlQ4DE",
   authDomain: "gestaoutihnss.firebaseapp.com",
@@ -169,52 +164,34 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-/* ===== LOGIN ===== */
+/* LOGIN */
 function login() {
-  const email = document.getElementById("email").value;
-  const senha = document.getElementById("senha").value;
-
-  auth.signInWithEmailAndPassword(email, senha)
-    .catch(err => document.getElementById("loginError").innerText = err.message);
+  auth.signInWithEmailAndPassword(
+    email.value,
+    senha.value
+  ).catch(e => loginError.innerText = e.message);
 }
 
 auth.onAuthStateChanged(user => {
-  if (user) {
-    document.getElementById("loginOverlay").style.display = "none";
-    carregarLeitos();
-  } else {
-    document.getElementById("loginOverlay").style.display = "flex";
-  }
+  loginOverlay.style.display = user ? "none" : "flex";
+  if (user) carregarLeitos();
 });
 
-/* ===== LEITOS ===== */
+/* LEITOS – SOMENTE LEITURA */
 function carregarLeitos() {
-  db.collection("utis").doc("uti_hnss").collection("leitos")
+  db.collection("utis")
+    .doc("uti_hnss")
+    .collection("leitos")
+    .orderBy("numero")
     .onSnapshot(snapshot => {
-      const container = document.getElementById("leitos");
-      container.innerHTML = "";
+      leitos.innerHTML = "";
       snapshot.forEach(doc => {
         const l = doc.data();
         const div = document.createElement("div");
         div.className = `leito ${l.status}`;
         div.innerHTML = `<h3>Leito ${l.numero}</h3>${l.status.toUpperCase()}`;
-        div.onclick = () => alternarStatus(doc.id, l.status);
-        container.appendChild(div);
+        leitos.appendChild(div);
       });
-    });
-}
-
-function alternarStatus(id, statusAtual) {
-  let novo;
-  if (statusAtual === "livre") novo = "ocupado";
-  else if (statusAtual === "ocupado") novo = "bloqueado";
-  else novo = "livre";
-
-  db.collection("utis").doc("uti_hnss").collection("leitos")
-    .doc(id).update({
-      status: novo,
-      atualizado_em: new Date(),
-      atualizado_por: auth.currentUser.email
     });
 }
 
@@ -229,7 +206,7 @@ function logout() {
 <!-- LOGIN -->
 <div id="loginOverlay">
   <div id="loginBox">
-    <img src="hnss.png" alt="HNSS">
+    <img src="hnss.png">
     <h1>UTI HNSS</h1>
     <p>Acesso restrito</p>
     <input id="email" type="email" placeholder="E-mail">
