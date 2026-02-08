@@ -1935,6 +1935,7 @@ let isAdmin = false;
 <!-- Interconsulta
 <!-- AJUSTE HNSS - Interconsultas -->
 <label><input type="checkbox" name="inter_orto"> Ortopedia</label>
+<label><input type="checkbox" name="inter_nefro"> Nefrologia</label>
 <label><input type="checkbox" name="inter_onco"> Oncologia</label>
 <label><input type="checkbox" name="inter_cp"> Cuidados Paliativos</label>
 <label><input type="checkbox" name="inter_inf"> Infectologia</label>
@@ -1943,6 +1944,7 @@ s -->
 <h3>Interconsulta
 <!-- AJUSTE HNSS - Interconsultas -->
 <label><input type="checkbox" name="inter_orto"> Ortopedia</label>
+<label><input type="checkbox" name="inter_nefro"> Nefrologia</label>
 <label><input type="checkbox" name="inter_onco"> Oncologia</label>
 <label><input type="checkbox" name="inter_cp"> Cuidados Paliativos</label>
 <label><input type="checkbox" name="inter_inf"> Infectologia</label>
@@ -1958,8 +1960,52 @@ s</h3>
 <div class="hidden" id="evo_nefro_txt_wrap" style="flex: 1;">
 <textarea name="evo_nefro_txt" placeholder="Descrever" rows="3" style="width: 100%;"></textarea>
 </div>
+<div class="row nowrap" style="align-items: center;">
+<div style="min-width: 120px;">Ortopedia:</div>
+<label style="flex-direction: row; align-items: center; gap: 8px;">
+<input name="evo_ortop" onclick="evoToggleBox('evo_ortop_txt_wrap', true)" type="radio" value="sim"/> Sim
+      </label>
+<label style="flex-direction: row; align-items: center; gap: 8px;">
+<input name="evo_ortop" onclick="evoToggleBox('evo_ortop_txt_wrap', false)" type="radio" value="nao"/> Não
+      </label>
+<div class="hidden" id="evo_ortop_txt_wrap" style="flex: 1;">
+<textarea name="evo_ortop_txt" placeholder="Descrever" rows="3" style="width: 100%;"></textarea>
 </div>
 <div class="row nowrap" style="align-items: center;">
+<div style="min-width: 120px;">Infectologia:</div>
+<label style="flex-direction: row; align-items: center; gap: 8px;">
+<input name="evo_infecto" onclick="evoToggleBox('evo_infecto_txt_wrap', true)" type="radio" value="sim"/> Sim
+      </label>
+<label style="flex-direction: row; align-items: center; gap: 8px;">
+<input name="evo_infecto" onclick="evoToggleBox('evo_infecto_txt_wrap', false)" type="radio" value="nao"/> Não
+      </label>
+<div class="hidden" id="evo_infecto_txt_wrap" style="flex: 1;">
+<textarea name="evo_infecto_txt" placeholder="Descrever" rows="3" style="width: 100%;"></textarea>
+</div>    
+</div>
+<div class="row nowrap" style="align-items: center;">
+<div class="row nowrap" style="align-items: center;">
+<div style="min-width: 120px;">Oncologia:</div>
+<label style="flex-direction: row; align-items: center; gap: 8px;">
+<input name="evo_onco" onclick="evoToggleBox('evo_onco_txt_wrap', true)" type="radio" value="sim"/> Sim
+      </label>
+<label style="flex-direction: row; align-items: center; gap: 8px;">
+<input name="evo_onco" onclick="evoToggleBox('evo_onco_txt_wrap', false)" type="radio" value="nao"/> Não
+      </label>
+<div class="hidden" id="evo_onco_txt_wrap" style="flex: 1;">
+<textarea name="evo_onco_txt" placeholder="Descrever" rows="3" style="width: 100%;"></textarea>
+</div>
+<div class="row nowrap" style="align-items: center;">
+<div style="min-width: 120px;">Cuidados Paliativos:</div>
+<label style="flex-direction: row; align-items: center; gap: 8px;">
+<input name="evo_cp" onclick="evoToggleBox('evo_cp_txt_wrap', true)" type="radio" value="sim"/> Sim
+      </label>
+<label style="flex-direction: row; align-items: center; gap: 8px;">
+<input name="evo_cp" onclick="evoToggleBox('evo_cp_txt_wrap', false)" type="radio" value="nao"/> Não
+      </label>
+<div class="hidden" id="evo_cp_txt_wrap" style="flex: 1;">
+<textarea name="evo_cp_txt" placeholder="Descrever" rows="3" style="width: 100%;"></textarea>
+</div>
 <div style="min-width: 120px;">CG:</div>
 <label style="flex-direction: row; align-items: center; gap: 8px;">
 <input name="evo_cg" onclick="evoToggleBox('evo_cg_txt_wrap', true)" type="radio" value="sim"/> Sim
@@ -1969,18 +2015,6 @@ s</h3>
       </label>
 <div class="hidden" id="evo_cg_txt_wrap" style="flex: 1;">
 <textarea name="evo_cg_txt" placeholder="Descrever" rows="3" style="width: 100%;"></textarea>
-</div>
-</div>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 120px;">:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px;">
-<input name="evo_ccv" onclick="evoToggleBox('evo_ccv_txt_wrap', true)" type="radio" value="sim"/> Sim
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px;">
-<input name="evo_ccv" onclick="evoToggleBox('evo_ccv_txt_wrap', false)" type="radio" value="nao"/> Não
-      </label>
-<div class="hidden" id="evo_ccv_txt_wrap" style="flex: 1;">
-<textarea name="evo_ccv_txt" placeholder="Descrever" rows="3" style="width: 100%;"></textarea>
 </div>
 </div>
 <div class="row nowrap" style="align-items: center;">
