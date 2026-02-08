@@ -1698,17 +1698,6 @@ let isAdmin = false;
       <textarea name="evo_doppler_desc" rows="2" placeholder="Descreva os achados do Doppler cerebral..."></textarea>
 </label>
 </div>
-<!-- Brain4care -->
-<div class="row nowrap" style="align-items: center; margin-top: 10px;">
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_brain4care_check" type="checkbox" onclick="toggleNeuroExtra('brain4care')"/> Brain4care
-</label>
-</div>
-<div class="hidden" id="evo_brain4care_wrap" style="margin-top: 6px;">
-<label style="flex: 1; min-width: 100%;">
-      <textarea name="evo_brain4care_desc" rows="2" placeholder="Descreva os dados do Brain4care..."></textarea>
-</label>
-</div>
 </div>
 <!-- Hematológico / Trombose -->
 <div class="section">
@@ -1797,15 +1786,6 @@ let isAdmin = false;
 <div class="row nowrap">
 <label style="min-width: 260px;">Swan-Ganz (local):
         <input name="evo_swanganz_local" type="text"/>
-</label>
-<label style="min-width: 140px;">Dia:
-        <input name="evo_swanganz_dia" placeholder="dd/mm ou D+?" type="text"/>
-</label>
-<label style="min-width: 220px;">BIA:
-        <input name="evo_bia" placeholder="sim/não ou detalhes" type="text"/>
-</label>
-<label style="min-width: 140px;">Dia:
-        <input name="evo_bia_dia" placeholder="dd/mm ou D+?" type="text"/>
 </label>
 </div>
 <div class="row nowrap">
@@ -1955,18 +1935,6 @@ let isAdmin = false;
       </label>
 <div class="hidden" id="evo_cg_txt_wrap" style="flex: 1;">
 <textarea name="evo_cg_txt" placeholder="Descrever" rows="3" style="width: 100%;"></textarea>
-</div>
-</div>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 120px;">CCV:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px;">
-<input name="evo_ccv" onclick="evoToggleBox('evo_ccv_txt_wrap', true)" type="radio" value="sim"/> Sim
-      </label>
-<label style="flex-direction: row; align-items: center; gap: 8px;">
-<input name="evo_ccv" onclick="evoToggleBox('evo_ccv_txt_wrap', false)" type="radio" value="nao"/> Não
-      </label>
-<div class="hidden" id="evo_ccv_txt_wrap" style="flex: 1;">
-<textarea name="evo_ccv_txt" placeholder="Descrever" rows="3" style="width: 100%;"></textarea>
 </div>
 </div>
 <div class="row nowrap" style="align-items: center;">
@@ -2198,22 +2166,6 @@ let isAdmin = false;
     } else {
       qtdInput.style.display = 'none';
       qtdInput.value = '';
-    }
-  }
-
-  // ===== UI: Toggle Neurológico (Doppler, Brain4care) =====
-  function toggleNeuroExtra(tipo) {
-    var checkbox = document.getElementsByName('evo_' + tipo + '_check')[0];
-    var wrap = byId('evo_' + tipo + '_wrap');
-    
-    if (!checkbox || !wrap) return;
-    
-    if (checkbox.checked) {
-      wrap.classList.remove('hidden');
-    } else {
-      wrap.classList.add('hidden');
-      var textarea = wrap.querySelector('textarea');
-      if (textarea) textarea.value = '';
     }
   }
 
@@ -2917,9 +2869,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
         'evo_cvc_local', 'evo_cvc_dia', 
         'evo_art_local', 'evo_art_dia',
         'evo_hd_local', 'evo_hd_dia', 
-        'evo_svd_dia', 'evo_tot_tqt_dia',
-        'evo_swanganz_local', 'evo_swanganz_dia', 
-        'evo_bia', 'evo_bia_dia',
+        'evo_svd_dia', 'evo_tot_tqt_dia', 
         'evo_mp_transv', 'evo_mp_transv_dia', 
         'evo_drenos_outros', 'evo_retirados',
         // Nutrição (apenas campos de texto, não checkboxes)
@@ -3499,7 +3449,6 @@ function evoCopiarDispositivosAnterior(){
     // Copiar todos os campos de dispositivos
     var campos = ['evo_cvc_local', 'evo_cvc_dia', 'evo_art_local', 'evo_art_dia',
                   'evo_hd_local', 'evo_hd_dia', 'evo_svd_dia', 'evo_tot_tqt_dia',
-                  'evo_swanganz_local', 'evo_swanganz_dia', 'evo_bia', 'evo_bia_dia',
                   'evo_mp_transv', 'evo_mp_transv_dia', 'evo_drenos_outros', 'evo_retirados'];
     
     campos.forEach(function(nomeCampo){
@@ -4032,8 +3981,6 @@ function evoGerarTexto() {
       'evo_art_local', 'evo_art_dia',
       'evo_hd_local', 'evo_hd_dia',
       'evo_svd_dia', 'evo_tot_tqt_dia',
-      'evo_swanganz_local', 'evo_swanganz_dia',
-      'evo_bia', 'evo_bia_dia',
       'evo_mp_transv', 'evo_mp_transv_dia',
       'evo_drenos_outros',
       // Antibióticos em uso (importante manter e ajustar dias)
@@ -4971,8 +4918,8 @@ function ativarTogglesCondicionais() {
         }
     });
     
-    // Neurológico (Doppler, Brain4care)
-    ['doppler', 'brain4care'].forEach(function(tipo) {
+    // Neurológico (Doppler)
+    ['doppler'].forEach(function(tipo) {
         var chk = document.getElementsByName('evo_' + tipo + '_check')[0];
         var wrap = document.getElementById('evo_' + tipo + '_wrap');
         if (chk && wrap) {
