@@ -1577,6 +1577,22 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 </label>
 </div>
 </div>
+<hr style="border:0;border-top:1px solid #e5e7eb;margin:14px 0;"/>
+<div style="font-weight: bold; margin-bottom: 8px; color: #880e4f;">❤️ Marcadores Cardíacos</div>
+<div class="row nowrap" style="flex-wrap: wrap;">
+<label style="min-width: 180px;">CPK:
+  <input name="evo_cpk" type="text"/>
+</label>
+<label style="min-width: 180px;">CK-MB:
+  <input name="evo_ckmb" type="text"/>
+</label>
+<label style="min-width: 180px;">Troponina:
+  <input name="evo_troponina" type="text"/>
+</label>
+<label style="min-width: 180px;">BNP:
+  <input name="evo_bnp" type="text"/>
+</label>
+</div>
 </div>
 <!-- Renal / Metabólico -->
 <div class="section">
@@ -1696,16 +1712,42 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <div style="min-width: 120px;">Culturas:</div>
 <label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
 <input name="evo_culturas" onclick="evoToggleCulturas('pendentes')" type="radio" value="pendentes"/> Pendentes
-      </label>
+</label>
 <label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
 <input name="evo_culturas" onclick="evoToggleCulturas('negativas')" type="radio" value="negativas"/> Negativas
-      </label>
+</label>
 <label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
 <input name="evo_culturas" onclick="evoToggleCulturas('positivas')" type="radio" value="positivas"/> Positivas
-      </label>
-<div class="hidden" id="evo_cult_pend_wrap" style="flex: 1;"><input name="evo_cult_pend_data" placeholder="data/hora da coleta (pendentes)" style="width: 100%;" type="text"/></div>
-<div class="hidden" id="evo_cult_pos_wrap" style="flex: 1;">
-<input name="evo_cult_pos_txt" placeholder="descrever culturas positivas" type="text"/>
+</label>
+</div>
+<!-- Pendentes -->
+<div class="hidden" id="evo_cult_pend_wrap" style="margin-top: 8px; background: #fff8e1; border: 1px solid #ffe082; border-radius: 6px; padding: 10px 12px;">
+<div style="font-weight: bold; margin-bottom: 8px; color: #f57f17;">⏳ Culturas Pendentes</div>
+<div class="row nowrap" style="flex-wrap: wrap; gap: 10px;">
+<label style="min-width: 200px;">Sítio de coleta:
+  <input name="evo_cult_pend_sitio" placeholder="ex: hemocultura, urocultura..." type="text" style="width: 100%;"/>
+</label>
+<label style="min-width: 180px;">Data/hora da coleta:
+  <input name="evo_cult_pend_data" placeholder="ex: 10/03 08:00" type="text" style="width: 100%;"/>
+</label>
+</div>
+</div>
+<!-- Positivas -->
+<div class="hidden" id="evo_cult_pos_wrap" style="margin-top: 8px; background: #fce4ec; border: 1px solid #ef9a9a; border-radius: 6px; padding: 10px 12px;">
+<div style="font-weight: bold; margin-bottom: 8px; color: #b71c1c;">🦠 Culturas Positivas</div>
+<div class="row nowrap" style="flex-wrap: wrap; gap: 10px;">
+<label style="min-width: 200px;">Sítio de coleta:
+  <input name="evo_cult_pos_sitio" placeholder="ex: hemocultura, urocultura..." type="text" style="width: 100%;"/>
+</label>
+<label style="min-width: 180px;">Data/hora da coleta:
+  <input name="evo_cult_pos_data" placeholder="ex: 10/03 08:00" type="text" style="width: 100%;"/>
+</label>
+<label style="min-width: 280px; flex: 1;">Germe identificado:
+  <input name="evo_cult_pos_germe" placeholder="ex: E. coli ESBL, MRSA..." type="text" style="width: 100%;"/>
+</label>
+<label style="min-width: 240px; flex: 1;">Sensibilidade/Resistência:
+  <input name="evo_cult_pos_txt" placeholder="ex: sensível a carbapenêmicos..." type="text" style="width: 100%;"/>
+</label>
 </div>
 </div>
 <div class="row nowrap">
@@ -1717,9 +1759,6 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 </label>
 <label style="min-width: 240px;">Procalcitonina:
         <input name="evo_pct" type="text"/>
-</label>
-<label style="min-width: 220px;">Data:
-        <input name="evo_pct_data" type="text"/>
 </label>
 </div>
 </div>
@@ -1838,45 +1877,20 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <div class="section">
 <h3>Hematológico / Trombose</h3>
 <div class="row nowrap">
-<label style="min-width: 220px;">Hb:
-        <input name="evo_hb" type="text"/>
+<label style="min-width: 200px;">Hb/Ht:
+        <input name="evo_hb" type="text" placeholder="ex: 10.5/31"/>
 </label>
-<label style="min-width: 220px;">Plaquetas:
+<label style="min-width: 200px;">Plaquetas:
         <input name="evo_plaquetas" type="text"/>
 </label>
-<label style="min-width: 220px;">INR:
+<label style="min-width: 200px;">INR:
         <input name="evo_inr" type="text"/>
 </label>
-<label style="min-width: 220px;">PTT:
+<label style="min-width: 200px;">PTT:
         <input name="evo_ptt" type="text"/>
 </label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 220px;">BT/MT/M (bastões):
-        <input name="evo_bast" type="text" placeholder="ex: 3/1/0"/>
-</label>
-<label style="min-width: 220px;">Albumina:
-        <input name="evo_albumina" type="text"/>
-</label>
-<label style="min-width: 220px;">Troponina:
-        <input name="evo_troponina" type="text"/>
-</label>
-<label style="min-width: 220px;">CK-MB:
-        <input name="evo_ckmb" type="text"/>
-</label>
-</div>
-<div class="row nowrap">
-<label style="min-width: 220px;">CPK:
-        <input name="evo_cpk" type="text"/>
-</label>
-<label style="min-width: 220px;">FA:
-        <input name="evo_fa" type="text"/>
-</label>
-<label style="min-width: 220px;">GGT:
-        <input name="evo_ggt" type="text"/>
-</label>
-<label style="min-width: 220px;">BT/BD:
-        <input name="evo_btbd" type="text" placeholder="ex: 1.2/0.8"/>
+<label style="min-width: 200px;">Fibrinogênio:
+        <input name="evo_fibrinogenio" type="text"/>
 </label>
 </div>
 <div class="row nowrap" style="align-items: center;">
@@ -2094,6 +2108,44 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <div style="min-width: 220px;">Profilaxia úlcera de estresse:</div>
 <label><input name="evo_profilaxia_ulcera" type="radio" value="sim"/> Sim</label>
 <label><input name="evo_profilaxia_ulcera" type="radio" value="nao"/> Não</label>
+</div>
+<hr style="border:0;border-top:1px solid #e5e7eb;margin:12px 0;"/>
+<div style="font-weight: bold; margin-bottom: 8px; color: #4e342e;">🫀 Função Hepática / Pancreática</div>
+<div class="row nowrap" style="flex-wrap: wrap;">
+<label style="min-width: 180px;">TGO:
+  <input name="evo_tgo" type="text"/>
+</label>
+<label style="min-width: 180px;">TGP:
+  <input name="evo_tgp" type="text"/>
+</label>
+<label style="min-width: 180px;">FA:
+  <input name="evo_fa" type="text"/>
+</label>
+<label style="min-width: 180px;">GGT:
+  <input name="evo_ggt" type="text"/>
+</label>
+</div>
+<div class="row nowrap" style="flex-wrap: wrap;">
+<label style="min-width: 180px;">BT:
+  <input name="evo_bt" type="text"/>
+</label>
+<label style="min-width: 180px;">BD:
+  <input name="evo_bd" type="text"/>
+</label>
+<label style="min-width: 180px;">BI:
+  <input name="evo_bi" type="text"/>
+</label>
+<label style="min-width: 180px;">Albumina:
+  <input name="evo_albumina" type="text"/>
+</label>
+</div>
+<div class="row nowrap" style="flex-wrap: wrap;">
+<label style="min-width: 180px;">Lipase:
+  <input name="evo_lipase" type="text"/>
+</label>
+<label style="min-width: 180px;">Amilase:
+  <input name="evo_amilase" type="text"/>
+</label>
 </div>
 </div>
 <!-- Outros exames relevantes -->
@@ -3431,16 +3483,22 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     }
   }
 
-  function evoToggleCulturas() {
+  function evoToggleCulturas(tipo) {
     var sel = qs('input[name="evo_culturas"]:checked');
-    var wrap = byId('evo_cult_pos_wrap');
-    if (!wrap) return;
-    if (sel && sel.value === 'positivas') wrap.classList.remove('hidden');
-    else {
-      var inp = wrap.querySelector('input');
-      if (inp) inp.value = '';
-      wrap.classList.add('hidden');
-    }
+    var valor = sel ? sel.value : '';
+
+    var pendWrap = byId('evo_cult_pend_wrap');
+    var posWrap  = byId('evo_cult_pos_wrap');
+
+    // Esconder tudo e limpar
+    [pendWrap, posWrap].forEach(function(w) {
+      if (!w) return;
+      w.classList.add('hidden');
+      w.querySelectorAll('input').forEach(function(i) { i.value = ''; });
+    });
+
+    if (valor === 'pendentes' && pendWrap) pendWrap.classList.remove('hidden');
+    if (valor === 'positivas' && posWrap)  posWrap.classList.remove('hidden');
   }
 
   function evoToggleTEV() {
@@ -3805,7 +3863,7 @@ function evoCopiarInfeccaoAnterior(){
                        'evo_inf_atb2', 'evo_inf_dia_atb2', 'evo_inf_total_atb2',
                        'evo_inf_atb3', 'evo_inf_dia_atb3', 'evo_inf_total_atb3',
                        'evo_cult_pos_txt', 'evo_cult_pend_txt',
-                       'evo_leuco', 'evo_pcr', 'evo_pct', 'evo_pct_data'];
+                       'evo_leuco', 'evo_pcr', 'evo_pct'];
     
     camposTexto.forEach(function(nomeCampo){
       var campo = area.querySelector('[name="'+nomeCampo+'"]');
@@ -4010,7 +4068,6 @@ function evoGerarTexto() {
     var marc = [];
     function addM(lbl,key){ var v=evoVal(key); if(v) marc.push(lbl+': '+v); }
     addM('Leuco','evo_leuco'); addM('PCR','evo_pcr'); addM('PCT','evo_pct'); 
-    var pctd = evoVal('evo_pct_data'); if (pctd) marc.push('Data PCT: '+pctd);
     if (marc.length) infParts.push('Marcadores: '+marc.join(' | '));
     if (infParts.length) { linhas.push('Infecção: ' + infParts.join(' | ')); linhas.push(''); }
 
@@ -7676,30 +7733,40 @@ function toggleDoseWithCalc(checkId, doseId, calcId) {
 // ===== FOLHA DE ESPELHO LABORATORIAL =====
 
 var LABS_FOLHA = [
-  { label: 'Hb/Ht',         key: 'evo_hb' },
-  { label: 'Leuco',         key: 'evo_leuco' },
-  { label: 'BT/MT/M',       key: 'evo_bast' },
-  { label: 'Plaquetas',     key: 'evo_plaquetas' },
-  { label: 'Ureia',         key: 'evo_ureia' },
-  { label: 'Creatinina',    key: 'evo_creatinina' },
-  { label: 'Na⁺',           key: 'evo_na' },
-  { label: 'K⁺',            key: 'evo_k' },
-  { label: 'Mg⁺⁺',          key: 'evo_mg' },
-  { label: 'Ca⁺⁺ i',        key: 'evo_ca' },
-  { label: 'Pi',            key: 'evo_fosforo' },
-  { label: 'PCR',           key: 'evo_pcr' },
-  { label: 'Procalcitonina',key: 'evo_pct' },
-  { label: 'TGO',           key: 'evo_tgo' },
-  { label: 'TGP',           key: 'evo_tgp' },
-  { label: 'FA',            key: 'evo_fa' },
-  { label: 'GGT',           key: 'evo_ggt' },
-  { label: 'BT/BD',         key: 'evo_btbd' },
-  { label: 'INR',           key: 'evo_inr' },
-  { label: 'PTT',           key: 'evo_ptt' },
-  { label: 'Albumina',      key: 'evo_albumina' },
-  { label: 'Troponina',     key: 'evo_troponina' },
+  // Hematológico
+  { label: 'Hb/Ht',          key: 'evo_hb' },
+  { label: 'Plaquetas',      key: 'evo_plaquetas' },
+  { label: 'INR',            key: 'evo_inr' },
+  { label: 'PTT',            key: 'evo_ptt' },
+  { label: 'Fibrinogênio',   key: 'evo_fibrinogenio' },
+  // Renal / Eletrólitos
+  { label: 'Ureia',          key: 'evo_ureia' },
+  { label: 'Creatinina',     key: 'evo_creatinina' },
+  { label: 'Na⁺',            key: 'evo_na' },
+  { label: 'K⁺',             key: 'evo_k' },
+  { label: 'Mg⁺⁺',           key: 'evo_mg' },
+  { label: 'Ca⁺⁺ i',         key: 'evo_ca' },
+  { label: 'Pi',             key: 'evo_fosforo' },
+  // Infecção
+  { label: 'Leuco',          key: 'evo_leuco' },
+  { label: 'PCR',            key: 'evo_pcr' },
+  { label: 'Procalcitonina', key: 'evo_pct' },
+  // Hepático / Pancreático
+  { label: 'TGO',            key: 'evo_tgo' },
+  { label: 'TGP',            key: 'evo_tgp' },
+  { label: 'FA',             key: 'evo_fa' },
+  { label: 'GGT',            key: 'evo_ggt' },
+  { label: 'BT',             key: 'evo_bt' },
+  { label: 'BD',             key: 'evo_bd' },
+  { label: 'BI',             key: 'evo_bi' },
+  { label: 'Albumina',       key: 'evo_albumina' },
+  { label: 'Lipase',         key: 'evo_lipase' },
+  { label: 'Amilase',        key: 'evo_amilase' },
+  // Cardíaco
+  { label: 'CPK',            key: 'evo_cpk' },
   { label: 'CK-MB',         key: 'evo_ckmb' },
-  { label: 'CPK',           key: 'evo_cpk' },
+  { label: 'Troponina',      key: 'evo_troponina' },
+  { label: 'BNP',            key: 'evo_bnp' },
 ];
 
 function getLabValor(dados, row) {
@@ -7790,30 +7857,35 @@ function carregarDadosEvoLab(nomePct) {
 
 // Mapeamento admissão (sem prefixo) → chave da folha (com prefixo evo_)
 var ADM_MAP = {
-  evo_hb:        'hb',
-  evo_leuco:     'leuco',
-  evo_bast:      '__none__',   // não existe na admissão ainda
-  evo_plaquetas: 'plaquetas',
-  evo_ureia:     'ureia',
-  evo_creatinina:'creatinina',
-  evo_na:        'na',
-  evo_k:         'k',
-  evo_mg:        'mg',
-  evo_ca:        'ca',
-  evo_fosforo:   'fosforo',
-  evo_pcr:       '__none__',
-  evo_pct:       '__none__',
-  evo_tgo:       'tgo',
-  evo_tgp:       'tgp',
-  evo_fa:        '__none__',
-  evo_ggt:       '__none__',
-  evo_btbd:      '__btbd__',   // especial: compor bt+bd
-  evo_inr:       'inr',
-  evo_ptt:       'ptt',
-  evo_albumina:  '__none__',
-  evo_troponina: '__none__',
-  evo_ckmb:      '__none__',
-  evo_cpk:       '__none__',
+  evo_hb:           'hb',
+  evo_plaquetas:    'plaquetas',
+  evo_inr:          'inr',
+  evo_ptt:          'ptt',
+  evo_fibrinogenio: '__none__',
+  evo_ureia:        'ureia',
+  evo_creatinina:   'creatinina',
+  evo_na:           'na',
+  evo_k:            'k',
+  evo_mg:           'mg',
+  evo_ca:           'ca',
+  evo_fosforo:      'fosforo',
+  evo_leuco:        'leuco',
+  evo_pcr:          '__none__',
+  evo_pct:          '__none__',
+  evo_tgo:          'tgo',
+  evo_tgp:          'tgp',
+  evo_fa:           '__none__',
+  evo_ggt:          '__none__',
+  evo_bt:           'bt',
+  evo_bd:           'bd',
+  evo_bi:           '__none__',
+  evo_albumina:     '__none__',
+  evo_lipase:       '__none__',
+  evo_amilase:      '__none__',
+  evo_cpk:          '__none__',
+  evo_ckmb:         '__none__',
+  evo_troponina:    '__none__',
+  evo_bnp:          '__none__',
 };
 
 function getAdmLabValor(dadosAdm, evoKey) {
