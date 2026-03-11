@@ -558,6 +558,7 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <div style="display: flex; gap: 10px;">
     <button type="button" onclick="salvarAdmissao()" style="background: #4caf50; color: white; font-weight: bold;">💾 Salvar Admissão</button>
     <button type="button" onclick="novaEvolucaoRapida()" style="background: #ff9800; color: white; font-weight: bold;">📝 Nova Evolução</button>
+    <button type="button" onclick="abrirEvolucaoLab()" style="background: #0288d1; color: white; font-weight: bold;">🧪 Evolução Laboratorial</button>
     <button type="button" id="btnToggleAdmissao" onclick="toggleAdmissao()" style="background: #1565c0; color: white;">🔽 Recolher</button>
 </div>
 </div>
@@ -1209,6 +1210,7 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <button onclick="window.print()" type="button">🖨️ Imprimir</button>
 <button onclick="salvarAdmissao()" type="button" style="background: #4caf50; color: white; font-weight: bold;">💾 Salvar</button>
 <button onclick="novaEvolucaoRapida()" type="button" style="background: #ff9800; color: white; font-weight: bold;">📝 Nova Evolução</button>
+<button onclick="abrirEvolucaoLab()" type="button" style="background: #0288d1; color: white; font-weight: bold;">🧪 Evolução Laboratorial</button>
 <span id="status_save" style="margin-left: 10px; color: #0b6;"> </span>
 </div>
 <!-- Painel: Texto para copiar (não bloqueia a página) -->
@@ -1845,6 +1847,34 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 </label>
 <label style="min-width: 220px;">PTT:
         <input name="evo_ptt" type="text"/>
+</label>
+</div>
+<div class="row nowrap">
+<label style="min-width: 220px;">BT/MT/M (bastões):
+        <input name="evo_bast" type="text" placeholder="ex: 3/1/0"/>
+</label>
+<label style="min-width: 220px;">Albumina:
+        <input name="evo_albumina" type="text"/>
+</label>
+<label style="min-width: 220px;">Troponina:
+        <input name="evo_troponina" type="text"/>
+</label>
+<label style="min-width: 220px;">CK-MB:
+        <input name="evo_ckmb" type="text"/>
+</label>
+</div>
+<div class="row nowrap">
+<label style="min-width: 220px;">CPK:
+        <input name="evo_cpk" type="text"/>
+</label>
+<label style="min-width: 220px;">FA:
+        <input name="evo_fa" type="text"/>
+</label>
+<label style="min-width: 220px;">GGT:
+        <input name="evo_ggt" type="text"/>
+</label>
+<label style="min-width: 220px;">BT/BD:
+        <input name="evo_btbd" type="text" placeholder="ex: 1.2/0.8"/>
 </label>
 </div>
 <div class="row nowrap" style="align-items: center;">
@@ -4029,6 +4059,7 @@ function evoGerarTexto() {
     var hema = [];
     function addHe(lbl,key){ var v=evoVal(key); if(v) hema.push(lbl+': '+v); }
     addHe('Hb','evo_hb'); addHe('Plaquetas','evo_plaquetas'); addHe('INR','evo_inr'); addHe('PTT','evo_ptt');
+    addHe('BT/MT/M','evo_bast'); addHe('Albumina','evo_albumina'); addHe('Troponina','evo_troponina'); addHe('CK-MB','evo_ckmb'); addHe('CPK','evo_cpk'); addHe('FA','evo_fa'); addHe('GGT','evo_ggt'); addHe('BT/BD','evo_btbd');
     var tev = evoVal('evo_tev'); 
     if (tev) hema.push('Profilaxia TEV: '+tev + (tev==='nao' && evoVal('evo_tev_just') ? ' ('+evoVal('evo_tev_just')+')' : ''));
     if (hema.length) { linhas.push('Hematológico/Trombose: ' + hema.join(' | ')); linhas.push(''); }
@@ -5808,7 +5839,17 @@ function deletarEvolucaoFirebase(docId) {
 // Atualizar função salvarEvolucao para usar Firebase
 var salvarEvolucaoOriginal = typeof salvarEvolucao === 'function' ? salvarEvolucao : null;
 function salvarEvolucao() {
+    // Verificar autenticação
+    if (!currentUser) {
+        alert('⚠️ Você precisa estar logado para salvar.\nFaça login e tente novamente.');
+        return;
+    }
+
     var nomePct = document.getElementsByName("nome")[0]?.value || "Paciente";
+
+    if (!nomePct.trim() || nomePct === 'Paciente') {
+        if (!confirm('O campo Nome do paciente está vazio. Deseja salvar mesmo assim?')) return;
+    }
     
     // Coletar APENAS campos da evolução (dentro de #evolucaoArea)
     var evolucaoArea = document.getElementById('evolucaoArea');
@@ -7557,6 +7598,238 @@ function toggleDoseWithCalc(checkId, doseId, calcId) {
       dose.value = '';
     }
   }
+}
+</script>
+
+<!-- ===== MODAL: EVOLUÇÃO LABORATORIAL ===== -->
+<div id="modalEvoLab" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:9999; justify-content:center; align-items:flex-start; overflow-y:auto; padding:20px; box-sizing:border-box;">
+  <div style="background:#fff; border-radius:10px; width:100%; max-width:1100px; margin:auto; box-shadow:0 8px 32px rgba(0,0,0,0.35); overflow:hidden;">
+    <!-- Cabeçalho -->
+    <div style="background:#0288d1; color:#fff; padding:16px 20px; display:flex; align-items:center; justify-content:space-between;">
+      <div>
+        <div style="font-size:18px; font-weight:bold;">🧪 Evolução Laboratorial</div>
+        <div id="evoLabNomePct" style="font-size:13px; opacity:0.9; margin-top:2px;"></div>
+      </div>
+      <button onclick="fecharEvolucaoLab()" style="background:rgba(255,255,255,0.25); border:none; color:#fff; font-size:18px; cursor:pointer; border-radius:6px; padding:4px 10px;">✕</button>
+    </div>
+    <!-- Conteúdo -->
+    <div style="padding:16px 20px;">
+      <div id="evoLabCarregando" style="text-align:center; padding:30px; color:#666; font-size:15px;">⏳ Carregando evoluções...</div>
+      <div id="evoLabTabela" style="display:none; overflow-x:auto;"></div>
+      <div id="evoLabVazia" style="display:none; text-align:center; padding:30px; color:#999; font-size:15px;">Nenhuma evolução salva para este leito.</div>
+    </div>
+    <!-- Rodapé -->
+    <div style="padding:12px 20px; border-top:1px solid #e0e0e0; display:flex; justify-content:flex-end; gap:10px;">
+      <button onclick="imprimirEvoLab()" style="background:#0288d1; color:#fff; border:none; border-radius:6px; padding:8px 18px; cursor:pointer; font-weight:bold;">🖨️ Imprimir</button>
+      <button onclick="fecharEvolucaoLab()" style="background:#757575; color:#fff; border:none; border-radius:6px; padding:8px 18px; cursor:pointer;">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== FOLHA DE ESPELHO LABORATORIAL =====
+
+var LABS_FOLHA = [
+  { label: 'Hb/Ht',         key: 'evo_hb' },
+  { label: 'Leuco',         key: 'evo_leuco' },
+  { label: 'BT/MT/M',       key: 'evo_bast' },
+  { label: 'Plaquetas',     key: 'evo_plaquetas' },
+  { label: 'Ureia',         key: 'evo_ureia' },
+  { label: 'Creatinina',    key: 'evo_creatinina' },
+  { label: 'Na⁺',           key: 'evo_na' },
+  { label: 'K⁺',            key: 'evo_k' },
+  { label: 'Mg⁺⁺',          key: 'evo_mg' },
+  { label: 'Ca⁺⁺ i',        key: 'evo_ca' },
+  { label: 'Pi',            key: 'evo_fosforo' },
+  { label: 'PCR',           key: 'evo_pcr' },
+  { label: 'Procalcitonina',key: 'evo_pct' },
+  { label: 'TGO',           key: 'evo_tgo' },
+  { label: 'TGP',           key: 'evo_tgp' },
+  { label: 'FA',            key: 'evo_fa' },
+  { label: 'GGT',           key: 'evo_ggt' },
+  { label: 'BT/BD',         key: 'evo_btbd' },
+  { label: 'INR',           key: 'evo_inr' },
+  { label: 'PTT',           key: 'evo_ptt' },
+  { label: 'Albumina',      key: 'evo_albumina' },
+  { label: 'Troponina',     key: 'evo_troponina' },
+  { label: 'CK-MB',         key: 'evo_ckmb' },
+  { label: 'CPK',           key: 'evo_cpk' },
+];
+
+function getLabValor(dados, row) {
+  if (!dados) return '';
+  return (dados[row.key] || '').trim();
+}
+
+function abrirEvolucaoLab() {
+  var modal = document.getElementById('modalEvoLab');
+  modal.style.display = 'flex';
+
+  // Nome do paciente
+  var nomePct = (document.getElementsByName('nome')[0] || {}).value || 'Paciente';
+  var leitoTxt = 'Leito ' + leitoAtual;
+  document.getElementById('evoLabNomePct').textContent = nomePct + ' — ' + leitoTxt;
+
+  document.getElementById('evoLabCarregando').style.display = 'block';
+  document.getElementById('evoLabTabela').style.display = 'none';
+  document.getElementById('evoLabVazia').style.display = 'none';
+
+  carregarDadosEvoLab(nomePct);
+}
+
+function fecharEvolucaoLab() {
+  document.getElementById('modalEvoLab').style.display = 'none';
+}
+
+function carregarDadosEvoLab(nomePct) {
+  var leitoId = ctiAtual + '_' + leitoAtual;
+
+  if (typeof db !== 'undefined') {
+    // Sem orderBy para evitar necessidade de índice composto - ordenar localmente
+    db.collection('evolucoes')
+      .where('leitoId', '==', leitoId)
+      .get()
+      .then(function(snap) {
+        var evos = [];
+        snap.forEach(function(doc) {
+          var d = doc.data();
+          d._docId = doc.id;
+          evos.push(d);
+        });
+        // Ordenar por timestamp asc (mais antiga primeiro)
+        evos.sort(function(a, b) {
+          var ta = a.timestamp ? a.timestamp.toMillis() : 0;
+          var tb = b.timestamp ? b.timestamp.toMillis() : 0;
+          return ta - tb;
+        });
+        renderizarFolhaEspelho(evos, nomePct);
+      })
+      .catch(function(err) {
+        console.error('Erro ao buscar evoluções para folha de espelho:', err);
+        document.getElementById('evoLabCarregando').style.display = 'none';
+        document.getElementById('evoLabVazia').innerHTML = '<span style="color:#c62828;">Erro ao carregar: ' + err.message + '</span>';
+        document.getElementById('evoLabVazia').style.display = 'block';
+      });
+  } else {
+    // Fallback localStorage
+    var evos = [];
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k && k.indexOf('evo_' + ctiAtual + '_' + leitoAtual + '_') === 0) {
+        try {
+          var obj = JSON.parse(localStorage.getItem(k));
+          if (obj && obj.dados) evos.push(obj);
+        } catch(e){}
+      }
+    }
+    evos.sort(function(a, b) {
+      return (a.data || '').localeCompare(b.data || '');
+    });
+    renderizarFolhaEspelho(evos, nomePct);
+  }
+}
+
+function renderizarFolhaEspelho(evos, nomePct) {
+  document.getElementById('evoLabCarregando').style.display = 'none';
+
+  if (!evos || evos.length === 0) {
+    document.getElementById('evoLabVazia').style.display = 'block';
+    return;
+  }
+
+  // Pegar culturas únicas de todas as evoluções
+  var culturas = [];
+  evos.forEach(function(evo) {
+    var d = evo.dados || {};
+    var cult = (d['evo_culturas'] || '').trim();
+    var cultPos = (d['evo_cult_pos_txt'] || '').trim();
+    var cultData = (d['evo_cult_pend_data'] || '').trim();
+    if (cult === 'positivas' && cultPos) {
+      culturas.push(cultPos + (cultData ? ' (' + cultData + ')' : ''));
+    } else if (cult === 'pendentes' && cultData) {
+      culturas.push('Pendente: ' + cultData);
+    }
+  });
+  // Deduplicar culturas
+  var cultUniq = culturas.filter(function(v, i, a){ return a.indexOf(v) === i; });
+
+  // Construir tabela
+  var MAX_COLS = 8; // máximo de colunas de data visíveis de uma vez
+  var cols = evos.slice(-MAX_COLS); // pegar as últimas MAX_COLS evoluções
+
+  var html = '<table id="tabelaFolhaEspelho" style="border-collapse:collapse; width:100%; font-size:13px; min-width:600px;">';
+
+  // === CABEÇALHO ===
+  html += '<thead>';
+  // Linha título
+  html += '<tr style="background:#0288d1; color:#fff;">';
+  html += '<td colspan="' + (cols.length + 1) + '" style="padding:10px 14px; font-size:15px; font-weight:bold;">';
+  html += '🧪 Folha de Espelho — ' + escapeHtml(nomePct);
+  html += '<span style="float:right; font-size:12px; font-weight:normal; opacity:0.85;">Leito ' + leitoAtual + ' — CTI Adulto</span>';
+  html += '</td></tr>';
+  // Linha datas
+  html += '<tr style="background:#e1f5fe;">';
+  html += '<td style="padding:8px 10px; font-weight:bold; border:1px solid #b0bec5; width:130px; background:#b3e5fc;">Exame</td>';
+  cols.forEach(function(evo) {
+    var dt = (evo.data || '').replace(/,.*/, '').trim(); // só data sem hora
+    html += '<td style="padding:8px 6px; text-align:center; font-weight:bold; border:1px solid #b0bec5; white-space:nowrap; font-size:12px;">' + escapeHtml(dt) + '</td>';
+  });
+  html += '</tr>';
+  html += '</thead>';
+
+  // === LINHAS DE EXAMES ===
+  html += '<tbody>';
+  LABS_FOLHA.forEach(function(row, idx) {
+    var bg = idx % 2 === 0 ? '#fafafa' : '#ffffff';
+    html += '<tr style="background:' + bg + ';">';
+    html += '<td style="padding:7px 10px; font-weight:bold; border:1px solid #e0e0e0; background:#f5f5f5; white-space:nowrap;">' + row.label + '</td>';
+    cols.forEach(function(evo) {
+      var val = getLabValor(evo.dados, row);
+      var cor = '#222';
+      // Destacar valores presentes
+      var style = val ? 'color:#0d47a1; font-weight:600;' : 'color:#bbb;';
+      html += '<td style="padding:7px 6px; text-align:center; border:1px solid #e0e0e0; ' + style + '">' + (escapeHtml(val) || '—') + '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  html += '</table>';
+
+  // === SEÇÃO DE CULTURAS ===
+  html += '<div style="margin-top:18px; padding:14px 16px; background:#fff8e1; border:1px solid #ffe082; border-radius:8px;">';
+  html += '<div style="font-weight:bold; margin-bottom:10px;">🦠 Culturas / Data de coleta / Resultado:</div>';
+  if (cultUniq.length > 0) {
+    cultUniq.forEach(function(c) {
+      html += '<div style="padding:5px 0; border-bottom:1px dashed #ffe082;">_________ ( ' + escapeHtml(c) + ' )</div>';
+    });
+  } else {
+    html += '<div style="color:#999;">Nenhuma cultura registrada nas evoluções.</div>';
+  }
+  html += '</div>';
+
+  document.getElementById('evoLabTabela').innerHTML = html;
+  document.getElementById('evoLabTabela').style.display = 'block';
+}
+
+function imprimirEvoLab() {
+  var tabela = document.getElementById('tabelaFolhaEspelho');
+  if (!tabela) return;
+  var cultDiv = tabela.parentElement.querySelector('div[style*="fff8e1"]');
+  var win = window.open('', '_blank', 'width=900,height=700');
+  win.document.write('<!DOCTYPE html><html><head><title>Evolução Laboratorial</title>');
+  win.document.write('<style>body{font-family:Arial,sans-serif;font-size:12px;margin:20px;} table{border-collapse:collapse;width:100%;} td,th{border:1px solid #ccc;padding:5px 8px;} thead tr:first-child td{background:#0288d1;color:#fff;font-size:13px;} thead tr:last-child{background:#e1f5fe;} tbody tr:nth-child(even){background:#fafafa;} @media print{body{margin:10px;}}</style>');
+  win.document.write('</head><body>');
+  win.document.write(tabela.outerHTML);
+  if (cultDiv) win.document.write(cultDiv.outerHTML);
+  win.document.write('</body></html>');
+  win.document.close();
+  win.focus();
+  setTimeout(function(){ win.print(); }, 400);
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 </script>
 
