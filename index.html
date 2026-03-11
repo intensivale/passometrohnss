@@ -466,12 +466,14 @@
 <script>
 // Configuração do Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyB8y0yNlR9bwCGDcuRcFfdp-ez_Kzvt0E4",
-  authDomain: "passometrohnss-a3188.firebaseapp.com",
-  projectId: "passometrohnss-a3188",
-  storageBucket: "passometrohnss-a3188.firebasestorage.app",
-  messagingSenderId: "992219356914",
-  appId: "1:992219356914:web:e5a94b90f193002d5dba6b"
+  apiKey: "AIzaSyB7Mt4NsiXOam36i5MgClhKa-IOimlQ4DE",
+  authDomain: "gestaoutihnss.firebaseapp.com",
+  databaseURL: "https://gestaoutihnss-default-rtdb.firebaseio.com",
+  projectId: "gestaoutihnss",
+  storageBucket: "gestaoutihnss.firebasestorage.app",
+  messagingSenderId: "664272211913",
+  appId: "1:664272211913:web:66e30e6670126b3e51a218",
+  measurementId: "G-K0ZB5KLRGY"
 };
 
 // Inicializar Firebase
@@ -5334,8 +5336,15 @@ function carregarLeito() {
             sistemaInicializado = true;
         })
         .catch(function(error) {
-            console.error('Erro ao carregar:', error);
-            atualizarStatusLeito('Erro ao carregar');
+            console.error('Erro ao carregar leito:', error);
+            if (error.code === 'permission-denied') {
+                atualizarStatusLeito('⛔ Permissão negada');
+                mostrarAlertaRegrasFirestore();
+            } else if (error.code === 'unavailable') {
+                atualizarStatusLeito('Sem conexão');
+            } else {
+                atualizarStatusLeito('Erro: ' + (error.code || error.message));
+            }
             sistemaInicializado = true;
         });
 }
@@ -5612,6 +5621,10 @@ function atualizarSelectLeitos() {
         })
         .catch(function(error) {
             console.error('Erro ao buscar leitos:', error);
+            // Mostrar alerta com instrução de correção se for permission-denied
+            if (error.code === 'permission-denied') {
+                mostrarAlertaRegrasFirestore();
+            }
             // Fallback sem dados
             selLeito.innerHTML = '';
             leitos.forEach(function(num) {
@@ -5624,6 +5637,21 @@ function atualizarSelectLeitos() {
             carregarLeito();
             atualizarTitulo();
         });
+}
+
+function mostrarAlertaRegrasFirestore() {
+    var regras = 'rules_version = \'2\';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /{document=**} {\n      allow read, write: if request.auth != null;\n    }\n  }\n}';
+    alert(
+        '⛔ PERMISSÃO NEGADA pelo Firestore\n\n' +
+        'As regras de segurança do banco de dados estão bloqueando o acesso.\n\n' +
+        'Para corrigir:\n' +
+        '1. Acesse: console.firebase.google.com\n' +
+        '2. Projeto: gestaoutihnss\n' +
+        '3. Firestore Database → Regras\n' +
+        '4. Substitua o conteúdo por:\n\n' +
+        regras + '\n\n' +
+        '5. Clique em Publicar'
+    );
 }
 
 function trocarLeito() {
@@ -5929,7 +5957,25 @@ function salvarEvolucao() {
             .catch(function(error) {
                 console.error('Erro ao salvar evolução:', error);
                 atualizarSyncStatus('error');
-                alert('Erro ao salvar: ' + error.message);
+                var msg = '❌ Erro ao salvar evolução:\n\n';
+                if (error.code === 'permission-denied') {
+                    msg += 'PERMISSÃO NEGADA pelo Firestore.\n\n';
+                    msg += 'Solução: No Firebase Console do projeto gestaoutihnss,\n';
+                    msg += 'acesse Firestore → Regras e configure:\n\n';
+                    msg += 'rules_version = \'2\';\nservice cloud.firestore {\n';
+                    msg += '  match /databases/{database}/documents {\n';
+                    msg += '    match /{document=**} {\n';
+                    msg += '      allow read, write: if request.auth != null;\n';
+                    msg += '    }\n  }\n}';
+                } else if (error.code === 'unavailable') {
+                    msg += 'Sem conexão com o servidor Firebase.\nVerifique sua internet.';
+                } else if (error.code === 'unauthenticated') {
+                    msg += 'Sessão expirada. Faça logout e login novamente.';
+                } else {
+                    msg += 'Código: ' + (error.code || 'desconhecido') + '\n';
+                    msg += 'Detalhe: ' + error.message;
+                }
+                alert(msg);
             });
     }
 }
@@ -7070,7 +7116,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 <div style="padding: 15px 20px; background: #f3e5f5;">
     <p style="margin: 0; font-size: 13px; color: #666;">
-        Para adicionar novos usuários, acesse o <a href="https://console.firebase.google.com/project/passometrohnss-a3188/authentication/users" target="_blank" style="color: #7b1fa2;">Firebase Console</a> → Authentication → Adicionar usuário.
+        Para adicionar novos usuários, acesse o <a href="https://console.firebase.google.com/project/gestaoutihnss/authentication/users" target="_blank" style="color: #7b1fa2;">Firebase Console</a> → Authentication → Adicionar usuário.
     </p>
 </div>
 <div id="listaUsuarios" style="padding: 20px; overflow-y: auto; flex: 1;"></div>
@@ -7685,33 +7731,48 @@ function carregarDadosEvoLab(nomePct) {
   var leitoId = ctiAtual + '_' + leitoAtual;
 
   if (typeof db !== 'undefined') {
-    // Sem orderBy para evitar necessidade de índice composto - ordenar localmente
-    db.collection('evolucoes')
-      .where('leitoId', '==', leitoId)
-      .get()
-      .then(function(snap) {
-        var evos = [];
-        snap.forEach(function(doc) {
-          var d = doc.data();
-          d._docId = doc.id;
-          evos.push(d);
-        });
-        // Ordenar por timestamp asc (mais antiga primeiro)
-        evos.sort(function(a, b) {
-          var ta = a.timestamp ? a.timestamp.toMillis() : 0;
-          var tb = b.timestamp ? b.timestamp.toMillis() : 0;
-          return ta - tb;
-        });
-        renderizarFolhaEspelho(evos, nomePct);
-      })
-      .catch(function(err) {
-        console.error('Erro ao buscar evoluções para folha de espelho:', err);
-        document.getElementById('evoLabCarregando').style.display = 'none';
-        document.getElementById('evoLabVazia').innerHTML = '<span style="color:#c62828;">Erro ao carregar: ' + err.message + '</span>';
-        document.getElementById('evoLabVazia').style.display = 'block';
+    // Busca paralela: admissão (leitos) + evoluções
+    Promise.all([
+      db.collection('leitos').doc(leitoId).get(),
+      db.collection('evolucoes').where('leitoId', '==', leitoId).get()
+    ])
+    .then(function(results) {
+      var docAdm = results[0];
+      var snapEvo = results[1];
+
+      var dadosAdm = docAdm.exists ? docAdm.data() : null;
+
+      var evos = [];
+      snapEvo.forEach(function(doc) {
+        var d = doc.data();
+        d._docId = doc.id;
+        evos.push(d);
       });
+      // Ordenar por timestamp asc localmente
+      evos.sort(function(a, b) {
+        var ta = a.timestamp ? a.timestamp.toMillis() : 0;
+        var tb = b.timestamp ? b.timestamp.toMillis() : 0;
+        return ta - tb;
+      });
+
+      renderizarFolhaEspelho(evos, nomePct, dadosAdm);
+    })
+    .catch(function(err) {
+      console.error('Erro folha de espelho:', err);
+      document.getElementById('evoLabCarregando').style.display = 'none';
+      var msg = err.code === 'permission-denied'
+        ? '⛔ Permissão negada. Configure as Regras do Firestore.'
+        : 'Erro: ' + err.message;
+      document.getElementById('evoLabVazia').innerHTML = '<span style="color:#c62828;">' + msg + '</span>';
+      document.getElementById('evoLabVazia').style.display = 'block';
+    });
+
   } else {
     // Fallback localStorage
+    var dadosAdm = null;
+    var admRaw = localStorage.getItem('LEITO_' + ctiAtual + '_' + leitoAtual);
+    if (admRaw) { try { dadosAdm = JSON.parse(admRaw); } catch(e){} }
+
     var evos = [];
     for (var i = 0; i < localStorage.length; i++) {
       var k = localStorage.key(i);
@@ -7722,22 +7783,82 @@ function carregarDadosEvoLab(nomePct) {
         } catch(e){}
       }
     }
-    evos.sort(function(a, b) {
-      return (a.data || '').localeCompare(b.data || '');
-    });
-    renderizarFolhaEspelho(evos, nomePct);
+    evos.sort(function(a, b) { return (a.data || '').localeCompare(b.data || ''); });
+    renderizarFolhaEspelho(evos, nomePct, dadosAdm);
   }
 }
 
-function renderizarFolhaEspelho(evos, nomePct) {
+// Mapeamento admissão (sem prefixo) → chave da folha (com prefixo evo_)
+var ADM_MAP = {
+  evo_hb:        'hb',
+  evo_leuco:     'leuco',
+  evo_bast:      '__none__',   // não existe na admissão ainda
+  evo_plaquetas: 'plaquetas',
+  evo_ureia:     'ureia',
+  evo_creatinina:'creatinina',
+  evo_na:        'na',
+  evo_k:         'k',
+  evo_mg:        'mg',
+  evo_ca:        'ca',
+  evo_fosforo:   'fosforo',
+  evo_pcr:       '__none__',
+  evo_pct:       '__none__',
+  evo_tgo:       'tgo',
+  evo_tgp:       'tgp',
+  evo_fa:        '__none__',
+  evo_ggt:       '__none__',
+  evo_btbd:      '__btbd__',   // especial: compor bt+bd
+  evo_inr:       'inr',
+  evo_ptt:       'ptt',
+  evo_albumina:  '__none__',
+  evo_troponina: '__none__',
+  evo_ckmb:      '__none__',
+  evo_cpk:       '__none__',
+};
+
+function getAdmLabValor(dadosAdm, evoKey) {
+  if (!dadosAdm) return '';
+  var admKey = ADM_MAP[evoKey];
+  if (!admKey) return '';
+  if (admKey === '__none__') return '';
+  if (admKey === '__btbd__') {
+    var bt = (dadosAdm['bt'] || '').trim();
+    var bd = (dadosAdm['bd'] || '').trim();
+    if (bt && bd) return bt + '/' + bd;
+    return bt || bd || '';
+  }
+  return (dadosAdm[admKey] || '').trim();
+}
+
+function renderizarFolhaEspelho(evos, nomePct, dadosAdm) {
   document.getElementById('evoLabCarregando').style.display = 'none';
 
-  if (!evos || evos.length === 0) {
+  var temAdmissao = dadosAdm && Object.keys(dadosAdm).some(function(k) {
+    return ADM_MAP[k] !== undefined || ['hb','leuco','plaquetas','ureia','creatinina','na','k','mg','ca','fosforo','inr','ptt','bt','bd','tgo','tgp'].indexOf(k) >= 0;
+  });
+
+  if ((!evos || evos.length === 0) && !temAdmissao) {
     document.getElementById('evoLabVazia').style.display = 'block';
     return;
   }
 
-  // Pegar culturas únicas de todas as evoluções
+  // Colunas: admissão primeiro + últimas 7 evoluções
+  var MAX_COLS = 7;
+  var colunas = [];
+
+  if (temAdmissao) {
+    var dataAdmStr = dadosAdm['_admissaoSalvaEm']
+      ? new Date(dadosAdm['_admissaoSalvaEm']).toLocaleDateString('pt-BR')
+      : (dadosAdm['data_internacao'] || 'Admissão');
+    colunas.push({ _label: dataAdmStr, _isAdmissao: true, _dadosAdm: dadosAdm });
+  }
+
+  evos.slice(-MAX_COLS).forEach(function(e) {
+    var dt = (e.data || '').replace(/,.*/, '').trim();
+    colunas.push({ _label: dt, _isAdmissao: false, dados: e.dados || {} });
+  });
+
+  // Culturas de todas as evoluções
   var culturas = [];
   evos.forEach(function(evo) {
     var d = evo.dados || {};
@@ -7750,44 +7871,54 @@ function renderizarFolhaEspelho(evos, nomePct) {
       culturas.push('Pendente: ' + cultData);
     }
   });
-  // Deduplicar culturas
-  var cultUniq = culturas.filter(function(v, i, a){ return a.indexOf(v) === i; });
+  var cultUniq = culturas.filter(function(v, i, a) { return a.indexOf(v) === i; });
 
-  // Construir tabela
-  var MAX_COLS = 8; // máximo de colunas de data visíveis de uma vez
-  var cols = evos.slice(-MAX_COLS); // pegar as últimas MAX_COLS evoluções
+  // Filtrar linhas que têm pelo menos 1 valor preenchido
+  var linhasComDados = LABS_FOLHA.filter(function(row) {
+    return colunas.some(function(col) {
+      if (col._isAdmissao) return !!getAdmLabValor(col._dadosAdm, row.key);
+      return !!(col.dados[row.key] || '').trim();
+    });
+  });
 
-  var html = '<table id="tabelaFolhaEspelho" style="border-collapse:collapse; width:100%; font-size:13px; min-width:600px;">';
+  // Se nenhuma linha tem dado, mostrar todas (tabela vazia)
+  var linhas = linhasComDados.length > 0 ? linhasComDados : LABS_FOLHA;
 
-  // === CABEÇALHO ===
+  var html = '<table id="tabelaFolhaEspelho" style="border-collapse:collapse; width:100%; font-size:13px; min-width:500px;">';
+
+  // Cabeçalho título
   html += '<thead>';
-  // Linha título
   html += '<tr style="background:#0288d1; color:#fff;">';
-  html += '<td colspan="' + (cols.length + 1) + '" style="padding:10px 14px; font-size:15px; font-weight:bold;">';
+  html += '<td colspan="' + (colunas.length + 1) + '" style="padding:10px 14px; font-size:15px; font-weight:bold;">';
   html += '🧪 Folha de Espelho — ' + escapeHtml(nomePct);
   html += '<span style="float:right; font-size:12px; font-weight:normal; opacity:0.85;">Leito ' + leitoAtual + ' — CTI Adulto</span>';
   html += '</td></tr>';
+
   // Linha datas
   html += '<tr style="background:#e1f5fe;">';
-  html += '<td style="padding:8px 10px; font-weight:bold; border:1px solid #b0bec5; width:130px; background:#b3e5fc;">Exame</td>';
-  cols.forEach(function(evo) {
-    var dt = (evo.data || '').replace(/,.*/, '').trim(); // só data sem hora
-    html += '<td style="padding:8px 6px; text-align:center; font-weight:bold; border:1px solid #b0bec5; white-space:nowrap; font-size:12px;">' + escapeHtml(dt) + '</td>';
+  html += '<td style="padding:8px 10px; font-weight:bold; border:1px solid #b0bec5; min-width:120px; background:#b3e5fc;">Exame</td>';
+  colunas.forEach(function(col) {
+    var bg = col._isAdmissao ? 'background:#fff9c4;' : '';
+    var badge = col._isAdmissao ? '<br><span style="font-size:10px; color:#f57f17;">admissão</span>' : '';
+    html += '<td style="padding:6px 8px; text-align:center; font-weight:bold; border:1px solid #b0bec5; white-space:nowrap; font-size:12px; ' + bg + '">' + escapeHtml(col._label) + badge + '</td>';
   });
   html += '</tr>';
   html += '</thead>';
 
-  // === LINHAS DE EXAMES ===
+  // Linhas de exames
   html += '<tbody>';
-  LABS_FOLHA.forEach(function(row, idx) {
+  linhas.forEach(function(row, idx) {
     var bg = idx % 2 === 0 ? '#fafafa' : '#ffffff';
     html += '<tr style="background:' + bg + ';">';
     html += '<td style="padding:7px 10px; font-weight:bold; border:1px solid #e0e0e0; background:#f5f5f5; white-space:nowrap;">' + row.label + '</td>';
-    cols.forEach(function(evo) {
-      var val = getLabValor(evo.dados, row);
-      var cor = '#222';
-      // Destacar valores presentes
-      var style = val ? 'color:#0d47a1; font-weight:600;' : 'color:#bbb;';
+    colunas.forEach(function(col) {
+      var val;
+      if (col._isAdmissao) {
+        val = getAdmLabValor(col._dadosAdm, row.key);
+      } else {
+        val = (col.dados[row.key] || '').trim();
+      }
+      var style = val ? 'color:#0d47a1; font-weight:600;' : 'color:#ccc;';
       html += '<td style="padding:7px 6px; text-align:center; border:1px solid #e0e0e0; ' + style + '">' + (escapeHtml(val) || '—') + '</td>';
     });
     html += '</tr>';
@@ -7795,36 +7926,22 @@ function renderizarFolhaEspelho(evos, nomePct) {
   html += '</tbody>';
   html += '</table>';
 
-  // === SEÇÃO DE CULTURAS ===
-  html += '<div style="margin-top:18px; padding:14px 16px; background:#fff8e1; border:1px solid #ffe082; border-radius:8px;">';
-  html += '<div style="font-weight:bold; margin-bottom:10px;">🦠 Culturas / Data de coleta / Resultado:</div>';
+  // Culturas
+  html += '<div style="margin-top:16px; padding:12px 14px; background:#fff8e1; border:1px solid #ffe082; border-radius:8px;">';
+  html += '<div style="font-weight:bold; margin-bottom:8px;">🦠 Culturas / Data de coleta / Resultado:</div>';
   if (cultUniq.length > 0) {
     cultUniq.forEach(function(c) {
-      html += '<div style="padding:5px 0; border-bottom:1px dashed #ffe082;">_________ ( ' + escapeHtml(c) + ' )</div>';
+      html += '<div style="padding:4px 0; border-bottom:1px dashed #ffe082;">_________ ( ' + escapeHtml(c) + ' )</div>';
     });
   } else {
-    html += '<div style="color:#999;">Nenhuma cultura registrada nas evoluções.</div>';
+    for (var i = 0; i < 4; i++) {
+      html += '<div style="padding:4px 0; border-bottom:1px dashed #ffe082; color:#bbb;">_________ (  )</div>';
+    }
   }
   html += '</div>';
 
   document.getElementById('evoLabTabela').innerHTML = html;
   document.getElementById('evoLabTabela').style.display = 'block';
-}
-
-function imprimirEvoLab() {
-  var tabela = document.getElementById('tabelaFolhaEspelho');
-  if (!tabela) return;
-  var cultDiv = tabela.parentElement.querySelector('div[style*="fff8e1"]');
-  var win = window.open('', '_blank', 'width=900,height=700');
-  win.document.write('<!DOCTYPE html><html><head><title>Evolução Laboratorial</title>');
-  win.document.write('<style>body{font-family:Arial,sans-serif;font-size:12px;margin:20px;} table{border-collapse:collapse;width:100%;} td,th{border:1px solid #ccc;padding:5px 8px;} thead tr:first-child td{background:#0288d1;color:#fff;font-size:13px;} thead tr:last-child{background:#e1f5fe;} tbody tr:nth-child(even){background:#fafafa;} @media print{body{margin:10px;}}</style>');
-  win.document.write('</head><body>');
-  win.document.write(tabela.outerHTML);
-  if (cultDiv) win.document.write(cultDiv.outerHTML);
-  win.document.write('</body></html>');
-  win.document.close();
-  win.focus();
-  setTimeout(function(){ win.print(); }, 400);
 }
 
 function escapeHtml(str) {
