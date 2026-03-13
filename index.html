@@ -559,6 +559,7 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 </div>
 <div style="display: flex; gap: 10px;">
     <button type="button" onclick="salvarAdmissao()" style="background: #4caf50; color: white; font-weight: bold;">💾 Salvar Admissão</button>
+    <button type="button" onclick="imprimirResumoAdmissao()" style="background: #607d8b; color: white;">🖨️ Imprimir Resumo</button>
     <button type="button" onclick="novaEvolucaoRapida()" style="background: #ff9800; color: white; font-weight: bold;">📝 Nova Evolução</button>
     <button type="button" onclick="abrirEvolucaoLab()" style="background: #0288d1; color: white; font-weight: bold;">🧪 Evolução Laboratorial</button>
     <button type="button" id="btnToggleAdmissao" onclick="toggleAdmissao()" style="background: #1565c0; color: white;">🔽 Recolher</button>
@@ -1223,7 +1224,7 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <h3>Ações</h3>
 <div class="row nowrap" style="justify-content: flex-start; gap: 14px; flex-wrap: wrap;">
 <button onclick="gerarTexto()" type="button">📄 Transformar em texto</button>
-<button onclick="window.print()" type="button">🖨️ Imprimir</button>
+<button onclick="imprimirResumoAdmissao()" type="button" style="background: #607d8b; color: white;">🖨️ Imprimir Resumo</button>
 <button onclick="salvarAdmissao()" type="button" style="background: #4caf50; color: white; font-weight: bold;">💾 Salvar</button>
 <button onclick="novaEvolucaoRapida()" type="button" style="background: #ff9800; color: white; font-weight: bold;">📝 Nova Evolução</button>
 <button onclick="abrirEvolucaoLab()" type="button" style="background: #0288d1; color: white; font-weight: bold;">🧪 Evolução Laboratorial</button>
@@ -2991,6 +2992,234 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     ta.focus();
     ta.select();
     try { document.execCommand('copy'); } catch(e){}
+  }
+
+  function imprimirResumoAdmissao() {
+    var L = [];
+
+    // Identificação
+    var nome   = val('nome') || 'Paciente';
+    var idade  = val('idade');
+    var sexoEl = byId('sexo'); var sexo = sexoEl ? sexoEl.value : '';
+    var peso   = val('peso'); var altura = val('altura');
+    var imc    = val('imc'); var pbw = val('pbw');
+    var dataAdm = val('datahora_admissao') || val('data_admissao');
+    var dataFmt = dataAdm;
+    try {
+      if (dataAdm && dataAdm.includes('T')) {
+        var _d = new Date(dataAdm);
+        if (!isNaN(_d.getTime())) {
+          dataFmt = String(_d.getDate()).padStart(2,'0')+'/'+String(_d.getMonth()+1).padStart(2,'0')+'/'+_d.getFullYear()
+            +' '+String(_d.getHours()).padStart(2,'0')+':'+String(_d.getMinutes()).padStart(2,'0');
+        }
+      }
+    } catch(e) {}
+
+    L.push('RESUMO DE ADMISSÃO — CTI ADULTO');
+    L.push('Hospital Nossa Senhora da Saúde | Intensivale');
+    L.push('');
+
+    // Cabeçalho paciente
+    var idLine = [];
+    if (nome)   idLine.push('Paciente: ' + nome);
+    if (idade)  idLine.push('Idade: ' + idade + ' anos');
+    if (sexo)   idLine.push('Sexo: ' + sexo);
+    if (dataFmt) idLine.push('Admissão: ' + dataFmt);
+    L.push(idLine.join('  |  '));
+
+    var antropo = [];
+    if (peso)   antropo.push('Peso: ' + peso + ' kg');
+    if (altura) antropo.push('Altura: ' + altura + ' cm');
+    if (imc)    antropo.push('IMC: ' + imc);
+    if (pbw)    antropo.push('PBW: ' + pbw + ' kg');
+    if (antropo.length) L.push(antropo.join('  |  '));
+    L.push('');
+
+    // Diagnóstico de internação
+    var diag = val('diagnostico_internacao');
+    if (diag) { L.push('Diagnóstico(s) de internação:'); L.push(diag); L.push(''); }
+
+    // HMA / HPP
+    var hma = val('hma');
+    if (hma) { L.push('HMA:'); L.push(hma); L.push(''); }
+
+    var hpp = val('hpp');
+    if (hpp) { L.push('HPP / Comorbidades:'); L.push(hpp); L.push(''); }
+
+    var cir = val('cirurgias');
+    if (cir) { L.push('Cirurgias prévias: ' + cir); L.push(''); }
+
+    var med = val('med_dom');
+    if (med) { L.push('Medicações domiciliares:'); L.push(med); L.push(''); }
+
+    var alSim = qs('input[name="alergias_check"][value="sim"]');
+    var alNao = qs('input[name="alergias_check"][value="nao"]');
+    var alText = val('alergias');
+    if (alSim && alSim.checked) L.push('Alergias: ' + (alText || 'Sim'));
+    else if (alNao && alNao.checked) L.push('Alergias: Não');
+    if ((alSim && alSim.checked) || (alNao && alNao.checked)) L.push('');
+
+    // Exame físico
+    var ef = val('exame_fisico');
+    if (ef) { L.push('Exame físico:'); L.push(ef); L.push(''); }
+
+    // Laboratório
+    var labs = [];
+    var _al = function(lbl, key) { var v = val(key); if (v) labs.push(lbl + ': ' + v); };
+    _al('Hb','hb'); _al('Leuco','leuco'); _al('Plaquetas','plaquetas');
+    _al('Ureia','ureia'); _al('Creatinina','creatinina');
+    _al('Na','na'); _al('K','k'); _al('Mg','mg'); _al('Ca','ca'); _al('Fósforo','fosforo');
+    _al('INR','inr'); _al('PTT','ptt');
+    _al('BT','bt'); _al('BD','bd');
+    _al('TGO','tgo'); _al('TGP','tgp');
+    _al('Lipase','lipase'); _al('Amilase','amilase');
+    _al('CPK','cpk'); _al('Troponina','troponina');
+    var labOut = val('lab_outros');
+    if (labs.length || labOut) {
+      L.push('Laboratório:');
+      if (labs.length) L.push('  ' + labs.join('  |  '));
+      if (labOut) L.push('  Outros: ' + labOut);
+      L.push('');
+    }
+
+    // Imagem
+    var ecg = val('ecg_admissao'), rx = val('rx_torax_admissao'), pocus = val('pocus_admissao'), imgout = val('img_outros');
+    if (ecg || rx || pocus || imgout) {
+      L.push('Imagem:');
+      if (ecg)    L.push('  ECG: ' + ecg);
+      if (rx)     L.push('  Rx tórax: ' + rx);
+      if (pocus)  L.push('  POCUS: ' + pocus);
+      if (imgout) L.push('  Outros: ' + imgout);
+      L.push('');
+    }
+
+    // Sistemas — Respiratório
+    var respSel = qs('input[name="resp_suporte"]:checked');
+    var sup = respSel ? respSel.value : '';
+    var respDet = [];
+    var _ar = function(lbl, key) { var v = val(key); if (v) respDet.push(lbl + ': ' + v); };
+    if (sup === 'VM') {
+      _ar('Modo','vm_modo'); _ar('PS/Pinsp','vm_pinsp_ps'); _ar('VC','vm_vc'); _ar('FR','vm_fr');
+      _ar('PEEP','vm_peep'); _ar('FiO2','vm_fio2'); _ar('Ppico','vm_ppico'); _ar('Pplatô','vm_pplato');
+    } else if (sup === 'Venturi') { var _vf=val('venturi_fio2'); if(_vf) respDet.push('FiO2: '+_vf); }
+    else if (sup === 'CN') { var _cl=val('cn_litros'); if(_cl) respDet.push(_cl+' L/min'); }
+    else if (sup === 'MR') { var _ml=val('mr_litros'); if(_ml) respDet.push(_ml+' L/min'); }
+    var gasDet = [];
+    var _ag = function(lbl, key) { var v = val(key); if (v) gasDet.push(lbl+': '+v); };
+    _ag('pH','gas_ph'); _ag('pO2','gas_po2'); _ag('pCO2','gas_pco2'); _ag('HCO3','gas_hco3'); _ag('BE','gas_be'); _ag('sO2','gas_so2');
+    if (sup || respDet.length || gasDet.length) {
+      var rp = (sup ? 'Suporte: ' + sup : '');
+      if (respDet.length) rp += (rp ? '  |  ' : '') + respDet.join(' | ');
+      if (gasDet.length)  rp += (rp ? '  |  ' : '') + 'GSA: ' + gasDet.join(' | ');
+      L.push('Respiratório: ' + rp); L.push('');
+    }
+
+    // Hemodinâmica
+    var hemo = [];
+    var _ah = function(lbl, key) { var v = val(key); if (v) hemo.push(lbl+': '+v); };
+    _ah('Ritmo','hemo_ritmo'); _ah('PA','hemo_pa'); _ah('FC','hemo_fc'); _ah('SpO2','hemo_spo2');
+    var drogas = [];
+    var _ad = function(lbl, key) { var v = val(key); if (v) drogas.push(lbl+': '+v); };
+    _ad('Dobutamina','dobutamina_dose'); _ad('Milrinona','milrinona_dose');
+    _ad('Noradrenalina','noradrenalina_dose'); _ad('Vasopressina','vasopressina_dose');
+    var perf = [];
+    var _ap = function(lbl, key) { var v = val(key); if (v) perf.push(lbl+': '+v); };
+    _ap('Lactato','perf_lactato'); _ap('SvcO2','perf_svco2'); _ap('GapCO2','perf_gapco2');
+    if (hemo.length || drogas.length || perf.length) {
+      var hp = hemo.join(' | ');
+      if (drogas.length) hp += (hp ? '  |  ' : '') + 'Drogas: ' + drogas.join(' | ');
+      if (perf.length)   hp += (hp ? '  |  ' : '') + 'Perfusão: ' + perf.join(' | ');
+      L.push('Hemodinâmica: ' + hp); L.push('');
+    }
+
+    // Infecção
+    var foco = val('inf_foco');
+    var atbs = [];
+    for (var _i=1; _i<=3; _i++) {
+      var _a=val('inf_atb'+_i), _dd=val('inf_dia_atb'+_i), _tt=val('inf_total_atb'+_i);
+      if (_a) atbs.push(_a + ((_dd||_tt) ? ' (D'+(_dd||'')+' de '+(_tt||'')+')' : ''));
+    }
+    var cultSel = qs('input[name="inf_culturas"]:checked');
+    var cultStr = '';
+    if (cultSel && cultSel.value === 'sim') {
+      var sites = [];
+      var _cu = qs('input[name="cult_urina"]');    if (_cu && _cu.checked) sites.push('urina');
+      var _ch = qs('input[name="cult_hemo"]');     if (_ch && _ch.checked) sites.push('hemocultura');
+      var _ct = qs('input[name="cult_traqueal"]'); if (_ct && _ct.checked) sites.push('secreção traqueal');
+      var _co = byId('cult_outros_chk');           if (_co && _co.checked) sites.push('outros' + (val('cult_outros_txt') ? ' ('+val('cult_outros_txt')+')' : ''));
+      cultStr = 'Culturas colhidas' + (sites.length ? ': ' + sites.join(', ') : '');
+    } else if (cultSel && cultSel.value === 'nao') {
+      cultStr = 'Culturas: não coletadas' + (val('culturas_motivo') ? ' (' + val('culturas_motivo') + ')' : '');
+    }
+    if (foco || atbs.length || cultStr) {
+      var inf = [];
+      if (foco) inf.push('Foco: ' + foco);
+      if (atbs.length) inf.push('ATB: ' + atbs.join(' | '));
+      if (cultStr) inf.push(cultStr);
+      L.push('Infecção: ' + inf.join('  |  ')); L.push('');
+    }
+
+    // Renal
+    var bh = val('bh_ml'), diu = val('diurese_ml'), ur = val('ureia'), cr = val('creatinina');
+    var trs = qs('input[name="trs"]:checked');
+    var renalP = [];
+    if (bh)  renalP.push('BH: ' + bh + ' mL');
+    if (diu) renalP.push('Diurese: ' + diu + ' mL');
+    if (ur)  renalP.push('Ureia: ' + ur);
+    if (cr)  renalP.push('Creat: ' + cr);
+    if (trs) renalP.push('TRS: ' + trs.value);
+    if (renalP.length) { L.push('Renal: ' + renalP.join('  |  ')); L.push(''); }
+
+    // Neuro
+    var glas = val('glasgow_total'), rass = val('rass_atual');
+    var delSel = qs('input[name="delirium"]:checked');
+    var neuro = [];
+    if (glas) neuro.push('Glasgow: ' + glas);
+    if (rass) neuro.push('RASS: ' + rass);
+    if (delSel) neuro.push('Delirium: ' + delSel.value);
+    if (neuro.length) { L.push('Neuro: ' + neuro.join('  |  ')); L.push(''); }
+
+    // Invasivos
+    var inv = [];
+    var _ai = function(lbl, loc, dia) {
+      var parts = [];
+      if (loc) parts.push(loc);
+      if (dia) parts.push('dia ' + dia);
+      if (parts.length) inv.push(lbl + ': ' + parts.join(' | '));
+    };
+    _ai('CVC',     val('cvc_local'),  val('cvc_dia'));
+    _ai('Art',     val('art_local'),  val('art_dia'));
+    _ai('HD',      val('hd_local'),   val('hd_dia'));
+    _ai('SVD',     '',                val('svd_dia'));
+    _ai('TOT/TQT', '',                val('tot_tqt_dia'));
+    var drenos = val('drenos_outros'); if (drenos) inv.push('Drenos/outros: ' + drenos);
+    if (inv.length) { L.push('Invasivos: ' + inv.join('  |  ')); L.push(''); }
+
+    // Plano / Metas
+    var plano = val('plano_metas');
+    if (plano) { L.push('Plano / Metas:'); L.push(plano); L.push(''); }
+
+    // Exames prévios
+    var prev = val('exames_previos_relevantes');
+    if (prev) { L.push('Exames prévios relevantes:'); L.push(prev); L.push(''); }
+
+    // ── Imprimir ──
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+      + '<title>Resumo de Admissão</title>'
+      + '<style>'
+      + 'body{font-family:Arial,sans-serif;font-size:13px;margin:20px 28px;color:#111;}'
+      + 'pre{white-space:pre-wrap;word-break:break-word;font-family:Arial,sans-serif;font-size:13px;line-height:1.65;margin:0;}'
+      + '@media print{body{margin:10mm;}}'
+      + '</style></head><body>'
+      + '<pre>' + L.join('\n').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>'
+      + '<script>window.onload=function(){window.print();}<\/script>'
+      + '</body></html>';
+
+    var w = window.open('', '_blank', 'width=820,height=960');
+    if (!w) { alert('Permita pop-ups para imprimir.'); return; }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
   }
 
   function gerarTexto() {
