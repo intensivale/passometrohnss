@@ -4978,11 +4978,11 @@ function evoGerarTexto() {
 
   // ===== Nutrição / GI (Evolução diária) =====
   var EVO_DIETAS = [
-    { id: "fresubin_original", nome: "Fresubin Original (1,0 kcal/mL)", kcal_per_ml: 1.0, prot_per_ml: 0.038 },
-    { id: "fresubin_hp_energy", nome: "Fresubin HP Energy (1,5 kcal/mL)", kcal_per_ml: 1.5, prot_per_ml: 0.075 },
-    { id: "fresubin_2_hp", nome: "Fresubin 2.0 HP (2,0 kcal/mL)", kcal_per_ml: 2.0, prot_per_ml: 0.10 },
-
-    { id: "custom", nome: "Personalizada (preencher kcal/mL e prot/mL)", kcal_per_ml: 0, prot_per_ml: 0 }
+    { id: "normocalorica",        nome: "Normocalórica (1,2 kcal/mL | 44g ptn/L)",               kcal_per_ml: 1.2, prot_per_ml: 0.044 },
+    { id: "normocalorica_fibras", nome: "Normocalórica com Fibras (1,2 kcal/mL | 44g ptn/L)",    kcal_per_ml: 1.2, prot_per_ml: 0.044 },
+    { id: "hipercalorica",        nome: "Hipercalórica (1,5 kcal/mL | 63g ptn/L)",               kcal_per_ml: 1.5, prot_per_ml: 0.063 },
+    { id: "hiper_hiper",          nome: "Hipercalórica e Hiperproteica (2,0 kcal/mL | 100g ptn/L)", kcal_per_ml: 2.0, prot_per_ml: 0.100 },
+    { id: "custom",               nome: "Personalizada (preencher kcal/mL e prot/mL)",           kcal_per_ml: 0, prot_per_ml: 0 }
   ];
 
   function evoInitDietas() {
@@ -5038,7 +5038,7 @@ function evoGerarTexto() {
     var vetKcal = evoNum(g("evo_vet_kcal"));
     var vetProt = evoNum(g("evo_vet_prot"));
     var mlh = evoNum(g("evo_dieta_mlh"));
-    var ml20 = mlh * 20;
+    var ml20 = mlh * 22;
 
     s("evo_dieta_ml20", ml20 ? Math.round(ml20) : "");
 
@@ -7597,6 +7597,7 @@ const DRUG_DATA = {
       { label: 'SG 5% ou SF 230ml + Dobut. 20ml (1000 μg/ml)', conc: 1000, unit: 'mcg/ml' },
       { label: 'SG 5% ou SF 210ml + Dobut. 40ml (2000 μg/ml)', conc: 2000, unit: 'mcg/ml' },
       { label: 'SG 5% ou SF 190ml + Dobut. 60ml (3000 μg/ml)', conc: 3000, unit: 'mcg/ml' },
+      { label: 'SF ou SG 60ml + Dobut. 40ml (5000 μg/ml)', conc: 5000, unit: 'mcg/ml' },
       { label: 'Dobutamina 60ml (12.500 μg/ml)', conc: 12500, unit: 'mcg/ml' }
     ],
     windows: [
