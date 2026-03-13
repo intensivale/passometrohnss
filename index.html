@@ -4792,8 +4792,7 @@ function evoGerarTexto() {
       + 'pre { white-space: pre-wrap; word-break: break-word; font-family: Arial, sans-serif; font-size: 13px; line-height: 1.6; margin: 0; }'
       + '@media print { body { margin: 10mm; } }'
       + '</style></head><body>'
-      + '<pre>' + linhas.join('
-').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>'
+      + '<pre>' + linhas.join('\n').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>'
       + '<script>window.onload=function(){ window.print(); }<\/script>'
       + '</body></html>';
 
