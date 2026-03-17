@@ -2796,12 +2796,12 @@ if (tipo === 'VM') vm.classList.remove('hidden');
 
   // ===== Evolução: Neuro igual à admissão =====
   function evoCalcGlasgow() {
-    var _ao = document.getElementById('evo_glasgow_ao'); var ao = parseFloat(_ao ? _ao.value : 0) || 0;
-    var _rv = document.getElementById('evo_glasgow_rv'); var rv = parseFloat(_rv ? _rv.value : 0) || 0;
-    var _rm = document.getElementById('evo_glasgow_rm'); var rm = parseFloat(_rm ? _rm.value : 0) || 0;
+    var ao = parseFloat((byId('evo_glasgow_ao')||{}).value) || 0;
+    var rv = parseFloat((byId('evo_glasgow_rv')||{}).value) || 0;
+    var rm = parseFloat((byId('evo_glasgow_rm')||{}).value) || 0;
     var total = ao + rv + rm;
-    var out = document.getElementById('evo_glasgow_total');
-    if (out) out.value = total > 0 ? String(total) : '';
+    var out = byId('evo_glasgow_total');
+    if (out) out.value = total > 0 ? total : '';
   }
 
   function evoToggleDelirium(sim) {
