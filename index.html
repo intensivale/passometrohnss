@@ -2795,9 +2795,9 @@ if (tipo === 'VM') vm.classList.remove('hidden');
 
   // ===== Evolução: Neuro igual à admissão =====
   function evoCalcGlasgow() {
-    var ao = parseFloat(document.getElementById('evo_glasgow_ao')?.value) || 0;
-    var rv = parseFloat(document.getElementById('evo_glasgow_rv')?.value) || 0;
-    var rm = parseFloat(document.getElementById('evo_glasgow_rm')?.value) || 0;
+    var _ao = document.getElementById('evo_glasgow_ao'); var ao = parseFloat(_ao ? _ao.value : 0) || 0;
+    var _rv = document.getElementById('evo_glasgow_rv'); var rv = parseFloat(_rv ? _rv.value : 0) || 0;
+    var _rm = document.getElementById('evo_glasgow_rm'); var rm = parseFloat(_rm ? _rm.value : 0) || 0;
     var total = ao + rv + rm;
     var out = document.getElementById('evo_glasgow_total');
     if (out) out.value = total > 0 ? String(total) : '';
@@ -4806,232 +4806,212 @@ function evoGerarTexto() {
   }
 
   function evoImprimirResumoPassagem() {
-    // Coleta dados do formulário de evolução + admissão
-    var linhas = [];
+    var L = [];
 
+    // --- Cabeçalho ---
     var nome   = evoVal('evo_nome') || val('nome') || 'Paciente';
     var dia    = evoVal('evo_dia_uti');
     var dx     = evoVal('evo_dx_principal');
-    var motivo = evoVal('evo_motivo_uti');
+    var motivo = evoVal('evo_motivo_uti') || val('diagnostico_internacao');
     var turnoSel = qs('input[name="evo_turno"]:checked');
     var turno = turnoSel ? turnoSel.value.toUpperCase() : '';
     var dataEvo = evoVal('evo_data') || '';
     var dataFmt = dataEvo;
     try {
-      if (dataEvo && dataEvo.includes('T')) {
-        var d = new Date(dataEvo);
-        if (!isNaN(d.getTime())) {
-          dataFmt = String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear()
-            + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+      if (dataEvo && dataEvo.indexOf('T') >= 0) {
+        var _d = new Date(dataEvo);
+        if (!isNaN(_d.getTime())) {
+          dataFmt = String(_d.getDate()).padStart(2,'0')+'/'+String(_d.getMonth()+1).padStart(2,'0')+'/'+_d.getFullYear()
+            +' '+String(_d.getHours()).padStart(2,'0')+':'+String(_d.getMinutes()).padStart(2,'0');
         }
       }
     } catch(e) {}
 
-    linhas.push('RESUMO DE PASSAGEM' + (turno ? ' — ' + turno : ''));
-    if (dataFmt) linhas.push('Data/hora: ' + dataFmt);
-    linhas.push('');
+    L.push('RESUMO DE PASSAGEM' + (turno ? ' — ' + turno : ''));
+    L.push('Hospital Nossa Senhora da Saúde | Intensivale');
+    if (dataFmt) L.push('Data/hora: ' + dataFmt);
+    L.push('');
 
-    linhas.push('Paciente: ' + nome
+    L.push('Paciente: ' + nome
       + (dia ? '  |  Dia UTI: ' + dia : '')
       + (dx  ? '  |  Dx: ' + dx : ''));
+    L.push('');
 
-    if (motivo) linhas.push('Motivo de internação na UTI: ' + motivo);
-    linhas.push('');
-
-    // HPP / comorbidades
-    var comb = evoVal('evo_comorbidades');
-    var base = evoVal('evo_baseline');
-    var al   = evoVal('evo_alergias');
-    if (comb || base || al) {
-      linhas.push('HPP:');
-      if (comb) linhas.push('  Comorbidades: ' + comb);
-      if (base) linhas.push('  Baseline: ' + base);
-      if (al)   linhas.push('  Alergias: ' + al);
-      linhas.push('');
+    // --- Motivo de Internação ---
+    if (motivo) {
+      L.push('MOTIVO DE INTERNAÇÃO NA UTI:');
+      L.push(motivo);
+      L.push('');
     }
 
-    // Problemas ativos
-    var prob = evoVal('evo_problemas');
-    if (prob) { linhas.push('Problemas ativos:'); linhas.push(prob); linhas.push(''); }
+    // --- HPP / Comorbidades ---
+    var comb = evoVal('evo_comorbidades') || val('hpp');
+    var base = evoVal('evo_baseline');
+    if (comb || base) {
+      L.push('HPP / COMORBIDADES:');
+      if (comb) L.push(comb);
+      if (base) L.push('Baseline: ' + base);
+      L.push('');
+    }
+
+    // --- Alergias ---
+    var al = evoVal('evo_alergias');
+    if (!al) {
+      var alSim = qs('input[name="alergias_check"][value="sim"]');
+      var alNao = qs('input[name="alergias_check"][value="nao"]');
+      if (alSim && alSim.checked) al = val('alergias') || 'Sim';
+      else if (alNao && alNao.checked) al = 'Não';
+    }
+    if (al) { L.push('ALERGIAS: ' + al); L.push(''); }
+
+    // --- Medicações domiciliares ---
+    var medDom = evoVal('evo_meds') || val('med_dom');
+    if (medDom) { L.push('MEDICAÇÕES DOMICILIARES:'); L.push(medDom); L.push(''); }
+
+    // --- Medicações em uso atual ---
+    var medAtual = evoVal('evo_medicacoes_atuais');
+    if (medAtual) { L.push('MEDICAÇÕES EM USO ATUAL:'); L.push(medAtual); L.push(''); }
+
+    // --- Resumo dos Sistemas Orgânicos ---
+    L.push('RESUMO DOS SISTEMAS ORGÂNICOS:');
 
     // Respiratório
     var supSel = qs('input[name="evo_resp_suporte"]:checked');
     var sup = supSel ? supSel.value : '';
     var respDet = [];
+    var _ar = function(lbl, key) { var v=evoVal(key); if(v) respDet.push(lbl+': '+v); };
     if (sup === 'VM') {
-      var addVm = function(lbl,key){ var v=evoVal(key); if(v) respDet.push(lbl+': '+v); }
-      addVm('Modo','evo_vm_modo'); addVm('PS/Pinsp','evo_vm_pinsp_ps');
-      addVm('VC','evo_vm_vc'); addVm('FR','evo_vm_fr');
-      addVm('PEEP','evo_vm_peep'); addVm('FiO2','evo_vm_fio2');
-    } else if (sup === 'Venturi') { var vf=evoVal('evo_venturi_fio2'); if(vf) respDet.push('FiO2: '+vf); }
-    else if (sup === 'CN') { var cl=evoVal('evo_cn_litros'); if(cl) respDet.push(cl+' L/min'); }
-    else if (sup === 'MR') { var ml=evoVal('evo_mr_litros'); if(ml) respDet.push(ml+' L/min'); }
+      _ar('Modo','evo_vm_modo'); _ar('PS/Pinsp','evo_vm_pinsp_ps'); _ar('VC','evo_vm_vc');
+      _ar('FR','evo_vm_fr'); _ar('PEEP','evo_vm_peep'); _ar('FiO2','evo_vm_fio2');
+      _ar('Ppico','evo_vm_ppico'); _ar('Pplatô','evo_vm_pplato'); _ar('Drive','evo_vm_drive');
+    } else if (sup === 'Venturi') { var _vf=evoVal('evo_venturi_fio2'); if(_vf) respDet.push('FiO2: '+_vf); }
+    else if (sup === 'CN') { var _cl=evoVal('evo_cn_litros'); if(_cl) respDet.push(_cl+' L/min'); }
+    else if (sup === 'MR') { var _ml=evoVal('evo_mr_litros'); if(_ml) respDet.push(_ml+' L/min'); }
     var gasDet = [];
-    var addGr = function(lbl,key){ var v=evoVal(key); if(v) gasDet.push(lbl+': '+v); }
-    addGr('pH','evo_gas_ph'); addGr('pO2','evo_gas_po2'); addGr('pCO2','evo_gas_pco2');
-    addGr('HCO3','evo_gas_hco3'); addGr('BE','evo_gas_be'); addGr('sO2','evo_gas_so2');
+    var _ag = function(lbl, key) { var v=evoVal(key); if(v) gasDet.push(lbl+': '+v); };
+    _ag('pH','evo_gas_ph'); _ag('pO2','evo_gas_po2'); _ag('pCO2','evo_gas_pco2');
+    _ag('HCO3','evo_gas_hco3'); _ag('BE','evo_gas_be'); _ag('sO2','evo_gas_so2');
     if (sup || respDet.length || gasDet.length) {
-      var rp = (sup ? 'Suporte: '+sup : '');
-      if (respDet.length) rp += (rp ? '  |  ' : '') + respDet.join(' | ');
-      if (gasDet.length)  rp += (rp ? '  |  ' : '') + 'Gasometria: '+gasDet.join(' | ');
-      linhas.push('Respiratório: ' + rp);
-      linhas.push('');
+      var rp = (sup ? 'Suporte: ' + sup : '');
+      if (respDet.length) rp += (rp ? ' | ' : '') + respDet.join(' | ');
+      if (gasDet.length)  rp += (rp ? ' | ' : '') + 'GSA: '+gasDet.join(' | ');
+      L.push('  Respiratório: ' + rp);
     }
 
     // Hemodinâmica
     var hemo = [];
-    var addHr = function(lbl,key){ var v=evoVal(key); if(v) hemo.push(lbl+': '+v); }
-    addHr('Ritmo','evo_hemo_ritmo'); addHr('PA','evo_hemo_pa'); addHr('FC','evo_hemo_fc'); addHr('SpO2','evo_hemo_spo2');
+    var _ah = function(lbl, key) { var v=evoVal(key); if(v) hemo.push(lbl+': '+v); };
+    _ah('Ritmo','evo_hemo_ritmo'); _ah('PA','evo_hemo_pa'); _ah('FC','evo_hemo_fc'); _ah('SpO2','evo_hemo_spo2');
     var drogas = [];
-    var addDr = function(lbl,key){ var v=evoVal(key); if(v) drogas.push(lbl+': '+v); }
-    addDr('Dobutamina','evo_dobutamina_dose'); addDr('Milrinona','evo_milrinona_dose');
-    addDr('Noradrenalina','evo_noradrenalina_dose'); addDr('Vasopressina','evo_vasopressina_dose');
+    var _ad = function(lbl, key) { var v=evoVal(key); if(v) drogas.push(lbl+': '+v); };
+    _ad('Dobutamina','evo_dobutamina_dose'); _ad('Milrinona','evo_milrinona_dose');
+    _ad('Noradrenalina','evo_noradrenalina_dose'); _ad('Vasopressina','evo_vasopressina_dose');
     var perf = [];
-    var addPr = function(lbl,key){ var v=evoVal(key); if(v) perf.push(lbl+': '+v); }
-    addPr('Lactato','evo_perf_lactato'); addPr('SvcO2','evo_perf_svco2'); addPr('GapCO2','evo_perf_gapco2');
-    var cardParts = [];
-    var addCr = function(lbl,key){ var v=evoVal(key); if(v) cardParts.push(lbl+': '+v); }
-    addCr('CPK','evo_cpk'); addCr('CK-MB','evo_ckmb'); addCr('Troponina','evo_troponina'); addCr('BNP','evo_bnp');
-    if (hemo.length || drogas.length || perf.length || cardParts.length) {
-      var parts = [];
-      if (hemo.length)      parts.push(hemo.join(' | '));
-      if (drogas.length)    parts.push('Drogas: '+drogas.join(' | '));
-      if (perf.length)      parts.push('Perfusão: '+perf.join(' | '));
-      if (cardParts.length) parts.push('Marcadores cardíacos: '+cardParts.join(' | '));
-      linhas.push('Hemodinâmica: ' + parts.join('  |  '));
-      linhas.push('');
+    var _ap = function(lbl, key) { var v=evoVal(key); if(v) perf.push(lbl+': '+v); };
+    _ap('Lactato','evo_perf_lactato'); _ap('SvcO2','evo_perf_svco2'); _ap('GapCO2','evo_perf_gapco2');
+    if (hemo.length || drogas.length || perf.length) {
+      var hp = hemo.join(' | ');
+      if (drogas.length) hp += (hp ? ' | ' : '') + 'Drogas: '+drogas.join(' | ');
+      if (perf.length)   hp += (hp ? ' | ' : '') + perf.join(' | ');
+      L.push('  Hemodinâmica: ' + hp);
     }
 
-    // Renal / Metabólico
+    // Renal / BH
     var renal = [];
-    var addRr = function(lbl,key){ var v=evoVal(key); if(v) renal.push(lbl+': '+v); }
-    var bhLbl  = byId('evo_bh_label') ? byId('evo_bh_label').textContent : 'BH';
+    var _arr = function(lbl, key) { var v=evoVal(key); if(v) renal.push(lbl+': '+v); };
+    var bhLbl  = byId('evo_bh_label')      ? byId('evo_bh_label').textContent      : 'BH';
     var diuLbl = byId('evo_diurese_label') ? byId('evo_diurese_label').textContent : 'Diurese';
-    addRr(bhLbl,'evo_bh_ml'); addRr(diuLbl,'evo_diurese_ml');
-    addRr('Ureia','evo_ureia'); addRr('Creatinina','evo_creatinina');
-    addRr('Na','evo_na'); addRr('K','evo_k'); addRr('Ca','evo_ca'); addRr('Mg','evo_mg'); addRr('Fósforo','evo_fosforo');
-    var trsSel2 = qs('input[name="evo_trs"]:checked'); var trs2 = trsSel2 ? trsSel2.value : '';
-    var trsTipo2 = evoVal('evo_trs_tipo');
-    if (trs2) renal.push('TRS: '+trs2+(trs2==='sim'&&trsTipo2?' ('+trsTipo2+')':''));
-    if (renal.length) { linhas.push('Renal/Metabólico: ' + renal.join(' | ')); linhas.push(''); }
+    _arr(bhLbl,'evo_bh_ml'); _arr(diuLbl,'evo_diurese_ml');
+    var trsSel = qs('input[name="evo_trs"]:checked');
+    if (trsSel) renal.push('TRS: '+trsSel.value+(evoVal('evo_trs_tipo') ? ' ('+evoVal('evo_trs_tipo')+')' : ''));
+    if (renal.length) L.push('  Renal: ' + renal.join(' | '));
 
     // Infecção
     var foco = evoVal('evo_inf_foco');
     var atbs = [];
-    for (var ii=1; ii<=3; ii++) {
-      var a=evoVal('evo_inf_atb'+ii), dd2=evoVal('evo_inf_dia_atb'+ii), tt=evoVal('evo_inf_total_atb'+ii);
-      if (a) atbs.push(a + ((dd2||tt) ? ' ('+dd2+' de '+tt+')' : ''));
+    for (var _i=1; _i<=3; _i++) {
+      var _a=evoVal('evo_inf_atb'+_i), _dd=evoVal('evo_inf_dia_atb'+_i), _tt=evoVal('evo_inf_total_atb'+_i);
+      if (_a) atbs.push(_a + ((_dd||_tt) ? ' ('+_dd+' de '+_tt+')' : ''));
     }
-    var cult2 = evoVal('evo_culturas');
-    var cultPendSitio = evoVal('evo_cult_pend_sitio'), cultPendData = evoVal('evo_cult_pend_data');
-    var cultPosSitio  = evoVal('evo_cult_pos_sitio'),  cultPosData  = evoVal('evo_cult_pos_data');
-    var cultPosGerme  = evoVal('evo_cult_pos_germe'),  cultPosTxt   = evoVal('evo_cult_pos_txt');
-    var marc2 = [];
-    var addMr = function(lbl,key){ var v=evoVal(key); if(v) marc2.push(lbl+': '+v); }
-    addMr('Leuco','evo_leuco'); addMr('PCR','evo_pcr'); addMr('PCT','evo_pct');
-    var infParts = [];
-    if (foco) infParts.push('Foco: '+foco);
-    if (atbs.length) infParts.push('ATB: '+atbs.join(' | '));
-    if (cult2 === 'pendentes') {
-      var cultPStr = 'Culturas: pendentes';
-      if (cultPendSitio) cultPStr += ' — Sítio: '+cultPendSitio;
-      if (cultPendData)  cultPStr += ' — Coleta: '+cultPendData;
-      infParts.push(cultPStr);
-    } else if (cult2 === 'negativas') {
-      infParts.push('Culturas: negativas');
-    } else if (cult2 === 'positivas') {
-      var cultStr = 'Culturas: positivas';
-      if (cultPosSitio)  cultStr += ' — Sítio: '+cultPosSitio;
-      if (cultPosData)   cultStr += ' — Coleta: '+cultPosData;
-      if (cultPosGerme)  cultStr += ' — Germe: '+cultPosGerme;
-      if (cultPosTxt)    cultStr += ' — '+cultPosTxt;
-      infParts.push(cultStr);
+    var cultSel2 = qs('input[name="evo_culturas"]:checked');
+    var cultStr = '';
+    if (cultSel2 && cultSel2.value === 'pendentes') {
+      cultStr = 'Culturas pendentes';
+      var cs = evoVal('evo_cult_pend_sitio'); var cd = evoVal('evo_cult_pend_data');
+      if (cs) cultStr += ' — '+cs; if (cd) cultStr += ' ('+cd+')';
+    } else if (cultSel2 && cultSel2.value === 'positivas') {
+      cultStr = 'Culturas positivas';
+      var ps = evoVal('evo_cult_pos_sitio'), pg = evoVal('evo_cult_pos_germe');
+      if (ps) cultStr += ' — '+ps; if (pg) cultStr += ' — '+pg;
+    } else if (cultSel2 && cultSel2.value === 'negativas') {
+      cultStr = 'Culturas negativas';
     }
-    if (marc2.length) infParts.push('Marcadores: '+marc2.join(' | '));
-    if (infParts.length) { linhas.push('Infecção: ' + infParts.join('  |  ')); linhas.push(''); }
+    if (foco || atbs.length || cultStr) {
+      var inf = [];
+      if (foco) inf.push('Foco: '+foco);
+      if (atbs.length) inf.push('ATB: '+atbs.join(' | '));
+      if (cultStr) inf.push(cultStr);
+      L.push('  Infecção: ' + inf.join(' | '));
+    }
 
-    // Hematológico
-    var hema = [];
-    var addHm = function(lbl,key){ var v=evoVal(key); if(v) hema.push(lbl+': '+v); }
-    addHm('Hb/Ht','evo_hb'); addHm('Plaquetas','evo_plaquetas'); addHm('INR','evo_inr');
-    addHm('PTT','evo_ptt'); addHm('Fibrinogênio','evo_fibrinogenio');
-    var tev = evoVal('evo_tev');
-    if (tev) hema.push('Profilaxia TEV: '+tev+(tev==='nao'&&evoVal('evo_tev_just')?' ('+evoVal('evo_tev_just')+')':''));
-    if (hema.length) { linhas.push('Hematológico: ' + hema.join(' | ')); linhas.push(''); }
-
-    // Função Hepática / Pancreática
-    var hepat = [];
-    var addHp = function(lbl,key){ var v=evoVal(key); if(v) hepat.push(lbl+': '+v); }
-    addHp('TGO','evo_tgo'); addHp('TGP','evo_tgp'); addHp('FA','evo_fa'); addHp('GGT','evo_ggt');
-    addHp('BT','evo_bt'); addHp('BD','evo_bd'); addHp('BI','evo_bi');
-    addHp('Albumina','evo_albumina'); addHp('Lipase','evo_lipase'); addHp('Amilase','evo_amilase');
-    if (hepat.length) { linhas.push('Hepático/Pancreático: ' + hepat.join(' | ')); linhas.push(''); }
+    // Neuro
+    var glas2 = evoVal('evo_glasgow_total'), rass2 = evoVal('evo_rass_atual');
+    var delSel3 = qs('input[name="evo_delirium"]:checked');
+    var neuro = [];
+    if (glas2) neuro.push('Glasgow: '+glas2);
+    if (rass2) neuro.push('RASS: '+rass2);
+    if (delSel3) neuro.push('Delirium: '+delSel3.value);
+    if (neuro.length) L.push('  Neuro/Sedação: ' + neuro.join(' | '));
 
     // Nutrição
-    var nut = [];
-    var addNr = function(lbl,key){ var v=evoVal(key); if(v) nut.push(lbl+': '+v); }
-    addNr('VET','evo_vet_kcal'); addNr('Prot g/dia','evo_vet_prot');
-    addNr('Dieta','evo_dieta_select'); addNr('mL/h','evo_dieta_mlh');
-    addNr('Kcal 24h','evo_kcal_admin'); addNr('% VET','evo_pct_kcal');
-    var profUlc = evoVal('evo_profilaxia_ulcera');
-    if (profUlc) nut.push('Profilaxia úlcera: '+profUlc);
-    if (nut.length) { linhas.push('Nutrição/GI: ' + nut.join(' | ')); linhas.push(''); }
+    var nutLine = [];
+    var _anu = function(lbl, key) { var v=evoVal(key); if(v) nutLine.push(lbl+': '+v); };
+    _anu('Dieta','evo_dieta_select'); _anu('mL/h','evo_dieta_mlh');
+    _anu('Kcal 24h','evo_kcal_admin'); _anu('% VET','evo_pct_kcal');
+    if (nutLine.length) L.push('  Nutrição: ' + nutLine.join(' | '));
 
     // Invasivos
     var inv2 = [];
-    var addI2 = function(lbl, txt){ if (txt) inv2.push(lbl+': '+txt); }
-    addI2('CVC',  [evoVal('evo_cvc_local'), evoVal('evo_cvc_dias')].filter(Boolean).join(' | '));
-    addI2('Art',  [evoVal('evo_art_local'), evoVal('evo_art_dias')].filter(Boolean).join(' | '));
-    addI2('HD',   [evoVal('evo_hd_local'),  evoVal('evo_hd_dias')].filter(Boolean).join(' | '));
-    if (evoVal('evo_svd_local')||evoVal('evo_svd_dias')) addI2('SVD',[evoVal('evo_svd_local'),evoVal('evo_svd_dias')].filter(Boolean).join(' | '));
-    if (evoVal('evo_tot_local')||evoVal('evo_tot_dias')) addI2('TOT/TQT',[evoVal('evo_tot_local'),evoVal('evo_tot_dias')].filter(Boolean).join(' | '));
-    if (evoVal('evo_drenos_outros')) addI2('Drenos', evoVal('evo_drenos_outros'));
-    if (inv2.length) { linhas.push('Invasivos: ' + inv2.join('  |  ')); linhas.push(''); }
+    var _ai2 = function(lbl, loc, dias) {
+      var p = []; if(loc) p.push(loc); if(dias) p.push('D'+dias);
+      if(p.length) inv2.push(lbl+': '+p.join(' '));
+    };
+    _ai2('CVC',    evoVal('evo_cvc_local'),  evoVal('evo_cvc_dias'));
+    _ai2('Art',    evoVal('evo_art_local'),  evoVal('evo_art_dias'));
+    _ai2('HD',     evoVal('evo_hd_local'),   evoVal('evo_hd_dias'));
+    _ai2('SVD',    evoVal('evo_svd_local'),  evoVal('evo_svd_dias'));
+    _ai2('TOT/TQT',evoVal('evo_tot_local'),  evoVal('evo_tot_dias'));
+    var dr2 = evoVal('evo_drenos_outros'); if(dr2) inv2.push('Drenos: '+dr2);
+    if (inv2.length) L.push('  Invasivos: ' + inv2.join(' | '));
 
-    // Neuro / Sedação
-    var neuro2 = [];
-    var gtot2 = evoVal('evo_glasgow_total'); if (gtot2) neuro2.push('Glasgow: '+gtot2);
-    var rass2 = evoVal('evo_rass_atual'); if (rass2) neuro2.push('RASS: '+rass2);
-    var delSel3 = qs('input[name="evo_delirium"]:checked');
-    if (delSel3) neuro2.push('Delirium: '+delSel3.value);
-    if (neuro2.length) { linhas.push('Neuro/Sedação: ' + neuro2.join(' | ')); linhas.push(''); }
+    L.push('');
 
-    // Interconsultas
-    var ics = [];
-    var icr = function(nome, txtKey){ var v=evoVal(nome); var t=evoVal(txtKey); if(v==='sim') return 'sim'+(t?' ('+t+')':''); if(v==='nao') return 'não'; return ''; }
-    var ic1=icr('evo_nefro','evo_nefro_txt'); if(ic1) ics.push('Nefro: '+ic1);
-    var ic2=icr('evo_cg','evo_cg_txt'); if(ic2) ics.push('CG: '+ic2);
-    var ic3=icr('evo_infecto','evo_infecto_txt'); if(ic3) ics.push('Infectologia: '+ic3);
-    var ic4=icr('evo_fono','evo_fono_txt'); if(ic4) ics.push('Fonoaudiologia: '+ic4);
-    var ic5=icr('evo_tep','evo_tep_txt'); if(ic5) ics.push('Ter.Enteral: '+ic5);
-    var ic6=icr('evo_paliat','evo_paliat_txt'); if(ic6) ics.push('Paliativos: '+ic6);
-    var ic7=icr('evo_onco','evo_onco_txt'); if(ic7) ics.push('Oncologia: '+ic7);
-    if (ics.length) { linhas.push('Interconsultas: '+ics.join('  |  ')); linhas.push(''); }
+    // --- Impressão Clínica ---
+    var imp = evoVal('evo_impressao');
+    if (imp) { L.push('IMPRESSÃO CLÍNICA:'); L.push(imp); L.push(''); }
 
-    // Impressão clínica e Plano
-    var imp2 = evoVal('evo_impressao'); if (imp2) { linhas.push('Impressão clínica:'); linhas.push(imp2); linhas.push(''); }
-    var pl2  = evoVal('evo_plano_24h');  if (pl2) { linhas.push('Plano/metas 24h:');  linhas.push(pl2);  linhas.push(''); }
+    // --- Metas / Plano ---
+    var pl = evoVal('evo_plano_24h') || val('plano_metas');
+    if (pl) { L.push('METAS / PLANO:'); L.push(pl); L.push(''); }
 
-    // === IMPRIMIR EM JANELA LIMPA ===
+    // === Imprimir ===
     var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
       + '<title>Resumo de Passagem</title>'
       + '<style>'
-      + 'body { font-family: Arial, sans-serif; font-size: 13px; margin: 20px 30px; color: #111; }'
-      + 'h1 { font-size: 16px; margin-bottom: 4px; }'
-      + 'pre { white-space: pre-wrap; word-break: break-word; font-family: Arial, sans-serif; font-size: 13px; line-height: 1.6; margin: 0; }'
-      + '@media print { body { margin: 10mm; } }'
+      + 'body{font-family:Arial,sans-serif;font-size:13px;margin:20px 28px;color:#111;}'
+      + 'pre{white-space:pre-wrap;word-break:break-word;font-family:Arial,sans-serif;font-size:13px;line-height:1.65;margin:0;}'
+      + '@media print{body{margin:10mm;}}'
       + '</style></head><body>'
-      + '<pre>' + linhas.join('\n').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>'
-      + '<script>window.onload=function(){ window.print(); }<\/script>'
+      + '<pre>' + L.join('\n').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>'
+      + '<scr'+'ipt>window.onload=function(){window.print();}<'+'/scr'+'ipt>'
       + '</body></html>';
 
-    var w = window.open('', '_blank', 'width=800,height=900');
+    var w = window.open('', '_blank', 'width=820,height=960');
     if (!w) { alert('Permita pop-ups para imprimir.'); return; }
     w.document.open();
     w.document.write(html);
     w.document.close();
   }
-
   function evoImprimirEvolucaoAtual() {
     // imprime usando o gerador de texto, se existir
     var texto = '';
