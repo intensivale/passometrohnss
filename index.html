@@ -3380,9 +3380,9 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       +'.thdr{font-weight:bold;background:#1a3a5c;color:#fff;text-align:center;padding:3px 5px;font-size:9px;}'
       +'@media print{body{margin:5mm;} @page{size:A4 landscape;margin:5mm;}}';
 
-    // ── helper: linha de tabela rótulo | valor full-width ──
+    // ── helper: linha com colspan=7 para cobrir as 8 colunas do cabeçalho ──
     var tr1 = function(lbl, val, minH) {
-      return '<tr><td class="lbl">'+lbl+'</td><td class="val" style="'+(minH?'min-height:'+minH+'px;':'')+'">'+val+'</td></tr>';
+      return '<tr><td class="lbl">'+lbl+'</td><td class="val" colspan="7" style="'+(minH?'min-height:'+minH+'px;':'')+'">'+val+'</td></tr>';
     };
 
     // ── TABELA 1: identificação + sistemas ──
