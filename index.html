@@ -8358,15 +8358,43 @@ function renderizarFolhaEspelho(evos, nomePct, dadosAdm) {
   var colunas = [];
 
   if (temAdmissao) {
-    var dataAdmStr = dadosAdm['_admissaoSalvaEm']
-      ? new Date(dadosAdm['_admissaoSalvaEm']).toLocaleDateString('pt-BR')
-      : (dadosAdm['data_internacao'] || 'Admissão');
+    // Usar a data de admissão informada pelo médico (campo datahora_admissao)
+    var dataAdmStr = 'Admissão';
+    var dtRaw = dadosAdm['datahora_admissao'] || dadosAdm['data_admissao'] || '';
+    if (dtRaw) {
+      try {
+        var _dAdm = new Date(dtRaw);
+        if (!isNaN(_dAdm.getTime())) {
+          dataAdmStr = String(_dAdm.getDate()).padStart(2,'0') + '/'
+            + String(_dAdm.getMonth()+1).padStart(2,'0') + '/'
+            + _dAdm.getFullYear();
+        }
+      } catch(e) {}
+    }
     colunas.push({ _label: dataAdmStr, _isAdmissao: true, _dadosAdm: dadosAdm });
   }
 
   evos.slice(-MAX_COLS).forEach(function(e) {
+    var dados = e.dados || {};
+    // Só incluir evolução que tenha pelo menos um exame laboratorial preenchido
+    var temLab = LABS_FOLHA.some(function(row) {
+      return (dados[row.key] || '').trim() !== '';
+    });
+    if (!temLab) return; // pular evoluções sem labs
     var dt = (e.data || '').replace(/,.*/, '').trim();
-    colunas.push({ _label: dt, _isAdmissao: false, dados: e.dados || {} });
+    // Tentar extrair data do campo evo_data se disponível
+    var dtEvo = (dados['evo_data'] || '').trim();
+    if (dtEvo) {
+      try {
+        var _dEvo = new Date(dtEvo);
+        if (!isNaN(_dEvo.getTime())) {
+          dt = String(_dEvo.getDate()).padStart(2,'0') + '/'
+            + String(_dEvo.getMonth()+1).padStart(2,'0') + '/'
+            + _dEvo.getFullYear();
+        }
+      } catch(e2) {}
+    }
+    colunas.push({ _label: dt || 'Sem data', _isAdmissao: false, dados: dados });
   });
 
   // Culturas de todas as evoluções
