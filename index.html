@@ -533,6 +533,9 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <button onclick="darAlta()" type="button" style="background: #ff5722; color: white; font-weight: bold; padding: 10px 20px;">
     🏠 Dar Alta
 </button>
+<button onclick="abrirRemanejamento()" type="button" style="background: #e65100; color: white; font-weight: bold; padding: 10px 20px;">
+    🔄 Remanejamento
+</button>
 <button onclick="verAltas()" type="button" style="background: #78909c; color: white; padding: 10px 20px;">
     📋 Ver Altas
 </button>
@@ -1723,6 +1726,27 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
         <input name="evo_inf_total_atb3" type="text"/>
 </label>
 </div>
+<div class="row nowrap" style="align-items:center; margin-top:8px;">
+  <div style="min-width:160px; font-weight:bold; color:#555;">ATB suspensos:</div>
+  <input name="evo_atb_suspensos" type="text" placeholder="ex: Vancomicina (suspenso D5), Fluconazol (D3)..." style="flex:1;"/>
+</div>
+<div class="row nowrap" style="align-items:center; gap:14px; flex-wrap:wrap;">
+<div style="min-width:120px;">Febre:</div>
+<label style="flex-direction:row;align-items:center;gap:6px;min-width:unset;">
+  <input name="evo_febre" type="radio" value="sim" onclick="evoToggleBox('evo_febre_wrap',true)"/> Sim
+</label>
+<label style="flex-direction:row;align-items:center;gap:6px;min-width:unset;">
+  <input name="evo_febre" type="radio" value="nao" onclick="evoToggleBox('evo_febre_wrap',false)"/> Não
+</label>
+<div class="hidden" id="evo_febre_wrap" style="display:flex;align-items:center;gap:10px;flex:1;min-width:260px;">
+  <select name="evo_febre_periodo" style="width:70px;">
+    <option value="12h">12h</option>
+    <option value="24h">24h</option>
+  </select>
+  <input name="evo_febre_episodios" placeholder="Nº de episódios" type="number" min="1" style="width:150px;"/>
+  <input name="evo_febre_pico" placeholder="Pico (°C)" type="text" style="width:100px;"/>
+</div>
+</div>
 <div class="row nowrap" style="align-items: center;">
 <div style="min-width: 120px;">Culturas:</div>
 <label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
@@ -2031,6 +2055,36 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
       <input name="evo_vet_prot" placeholder="g/dia" step="1" type="number"/>
 </label>
 </div>
+<!-- Via de alimentação -->
+<div class="row nowrap" style="align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:8px;">
+  <div style="min-width:140px; font-weight:bold;">Via alimentação:</div>
+  <label style="flex-direction:row;align-items:center;gap:6px;min-width:unset;">
+    <input name="evo_via_alimentacao" type="radio" value="oral" onclick="evoToggleViaAlimentacao('oral')"/> Oral
+  </label>
+  <label style="flex-direction:row;align-items:center;gap:6px;min-width:unset;">
+    <input name="evo_via_alimentacao" type="radio" value="parenteral" onclick="evoToggleViaAlimentacao('parenteral')"/> Parenteral
+  </label>
+  <label style="flex-direction:row;align-items:center;gap:6px;min-width:unset;">
+    <input name="evo_via_alimentacao" type="radio" value="enteral" onclick="evoToggleViaAlimentacao('enteral')"/> Enteral
+  </label>
+  <label style="flex-direction:row;align-items:center;gap:6px;min-width:unset;">
+    <input name="evo_via_alimentacao" type="radio" value="zero" onclick="evoToggleViaAlimentacao('zero')"/> Jejum / Zero
+  </label>
+</div>
+<!-- Dieta Oral -->
+<div class="hidden" id="evo_dieta_oral_wrap" style="margin-bottom:8px;">
+  <label style="flex:1; min-width:100%;">Dieta oral ofertada:
+    <input name="evo_dieta_oral_desc" type="text" placeholder="ex: dieta branda hipossódica, VO livre..."/>
+  </label>
+</div>
+<!-- Dieta Parenteral -->
+<div class="hidden" id="evo_dieta_parenteral_wrap" style="margin-bottom:8px;">
+  <label style="flex:1; min-width:100%;">Dieta parenteral:
+    <input name="evo_dieta_parenteral_desc" type="text" placeholder="ex: NPT central, composição, volume..."/>
+  </label>
+</div>
+<!-- Dieta Enteral -->
+<div class="hidden" id="evo_dieta_enteral_wrap">
 <div class="row grid-2">
 <label>Dieta enteral:
       <select id="evo_dieta_select" name="evo_dieta_select"></select>
@@ -2076,6 +2130,7 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
       <input name="evo_pct_prot" readonly="" step="0.1" type="number"/>
 </label>
 </div>
+</div><!-- fecha evo_dieta_enteral_wrap -->
 <hr style="border:0;border-top:1px solid #e5e7eb;margin:12px 0;"/>
 <div class="row nowrap" style="align-items:center; gap:14px; flex-wrap:wrap;">
 <div style="min-width: 180px;">Vômitos:</div>
@@ -3332,6 +3387,8 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     var infLine = [];
     if(foco) infLine.push('Foco: '+foco);
     if(atbs.length) infLine.push(atbs.join(' | '));
+    if(atbSuspF) infLine.push('Suspensos: '+atbSuspF);
+    if(febreTxtF) infLine.push(febreTxtF);
     var marc=[]; if(leuco) marc.push('Leuco: '+leuco); if(pcr) marc.push('PCR: '+pcr); if(pct) marc.push('PCT: '+pct);
     if(marc.length) infLine.push(marc.join(' | '));
 
@@ -3344,6 +3401,17 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       else if(cultSel2.value==='negativas') cultStr='Negativas';
       else if(cultSel2.value==='sim') cultStr='Coletadas';
       else if(cultSel2.value==='nao') cultStr='Não coletadas';
+    }
+    var atbSuspF = _ev('evo_atb_suspensos');
+    var febreSelF = qs('input[name="evo_febre"]:checked');
+    var febreTxtF = '';
+    if (febreSelF) {
+      febreTxtF = 'Febre ('+(_ev('evo_febre_periodo')||'24h')+'): '+febreSelF.value;
+      if (febreSelF.value==='sim') {
+        var fep=_ev('evo_febre_episodios'), fpc=_ev('evo_febre_pico');
+        if(fep) febreTxtF+=' '+fep+' ep.';
+        if(fpc) febreTxtF+=' pico '+fpc+'°C';
+      }
     }
 
     // Invasivos
@@ -3358,6 +3426,13 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     _iv('SVD','evo_svd_local','','evo_svd_dias','svd_dia');
     _iv('TOT/TQT','evo_tot_local','','evo_tot_dias','tot_tqt_dia');
     var dr=_ev('evo_drenos_outros')||_v('drenos_outros'); if(dr) inv.push('Drenos: '+dr);
+
+    // Via alimentação
+    var viaAlimSel = qs('input[name="evo_via_alimentacao"]:checked');
+    var viaAlim = viaAlimSel ? viaAlimSel.value : '';
+    var viaAlimDesc = '';
+    if (viaAlim==='oral')      viaAlimDesc = _ev('evo_dieta_oral_desc');
+    if (viaAlim==='parenteral') viaAlimDesc = _ev('evo_dieta_parenteral_desc');
 
     // Med / Impressão / Plano
     var medDom  = _vv('med_dom','evo_meds');
@@ -3401,6 +3476,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
       +tr1('Problemas ativos:', prob, 22)
       +tr1('HPP / Cirurgias:', (hpp?(hpp):'')+(cir?'<br><i>Cirurgias: '+cir+'</i>':''), 22)
       +tr1('Alergias:', alerg, 14)
+      +tr1('Nutrição:', (viaAlim ? (viaAlim.charAt(0).toUpperCase()+viaAlim.slice(1))+(viaAlimDesc?' — '+viaAlimDesc:'') : ''), 14)
       +tr1('Hemodinâmica:', hemoLine.join('<br>'), 22)
       +tr1('Respiratório:', respLine.join(' | '), 18)
       +tr1('Renal:', renalLine.join(' | '), 18)
@@ -3437,6 +3513,146 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     if(!w){ alert('Permita pop-ups para imprimir.'); return; }
     w.document.open(); w.document.write(html); w.document.close();
   }
+
+  // ===== Nutrição: toggle via alimentação =====
+  function evoToggleViaAlimentacao(tipo) {
+    var wraps = {
+      oral:       'evo_dieta_oral_wrap',
+      parenteral: 'evo_dieta_parenteral_wrap',
+      enteral:    'evo_dieta_enteral_wrap'
+    };
+    Object.keys(wraps).forEach(function(k) {
+      var el = byId(wraps[k]);
+      if (!el) return;
+      if (k === tipo) {
+        el.classList.remove('hidden');
+      } else {
+        el.classList.add('hidden');
+        // Limpar campos ao ocultar
+        el.querySelectorAll('input, select').forEach(function(i) {
+          if (i.type !== 'radio' && i.type !== 'checkbox') i.value = '';
+        });
+      }
+    });
+    // 'zero' oculta tudo
+    if (tipo === 'zero') {
+      Object.keys(wraps).forEach(function(k) {
+        var el = byId(wraps[k]);
+        if (el) el.classList.add('hidden');
+      });
+    }
+  }
+
+  // ===== Remanejamento de leito =====
+  function fecharModalRemanej() {
+    var m = document.getElementById('modalRemanej');
+    if (m) m.remove();
+  }
+
+  function abrirRemanejamento() {
+    var nomePct = (document.getElementsByName('nome')[0] || {}).value || '';
+    if (!nomePct) {
+      alert('Leito vazio — não há paciente para remanejamento.');
+      return;
+    }
+
+    // Descobrir leitos disponíveis (sem paciente)
+    var leitos = [1,2,3,4,5,6,7,8,9,10];
+    var leitosDisponiveis = leitos.filter(function(n) { return n !== leitoAtual; });
+
+    // Buscar quais leitos têm paciente
+    db.collection('leitos').get().then(function(snap) {
+      var ocupados = {};
+      snap.forEach(function(doc) {
+        var d = doc.data();
+        if (d.nome && d.nome.trim()) ocupados[doc.id] = d.nome;
+      });
+
+      var opcoes = leitosDisponiveis.map(function(n) {
+        var chave = ctiAtual + '_' + n;
+        var status = ocupados[chave] ? '⚠️ Ocupado: ' + ocupados[chave] : '✅ Vago';
+        return { num: n, chave: chave, status: status, vago: !ocupados[chave] };
+      });
+
+      // Montar modal simples
+      var html = '<div id="modalRemanej" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;">'
+        + '<div style="background:#fff;border-radius:10px;padding:24px;min-width:340px;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">'
+        + '<h3 style="margin:0 0 6px 0;color:#e65100;">🔄 Remanejamento de Leito</h3>'
+        + '<p style="margin:0 0 16px;color:#555;font-size:13px;">Paciente: <b>' + nomePct + '</b> (Leito ' + leitoAtual + ')</p>'
+        + '<p style="margin:0 0 10px;font-size:13px;font-weight:bold;">Escolha o leito de destino:</p>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">';
+
+      opcoes.forEach(function(op) {
+        var bg = op.vago ? '#e8f5e9' : '#fff8e1';
+        var border = op.vago ? '#4caf50' : '#ff9800';
+        html += '<button onclick="confirmarRemanejamento(' + op.num + ')" '
+          + 'style="background:' + bg + ';border:2px solid ' + border + ';border-radius:6px;padding:8px;cursor:pointer;text-align:left;font-size:12px;">'
+          + '<b>Leito ' + op.num + '</b><br><span style="font-size:11px;">' + op.status + '</span>'
+          + '</button>';
+      });
+
+      html += '</div>'
+        + '<button onclick="fecharModalRemanej()" '
+        + 'style="width:100%;padding:10px;background:#607d8b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">Cancelar</button>'
+        + '</div></div>';
+
+      document.body.insertAdjacentHTML('beforeend', html);
+    }).catch(function(e) {
+      alert('Erro ao buscar leitos: ' + e.message);
+    });
+  }
+
+  function confirmarRemanejamento(leitoDestino) {
+    var nomePct = (document.getElementsByName('nome')[0] || {}).value || '';
+    var chaveOrigem  = ctiAtual + '_' + leitoAtual;
+    var chaveDestino = ctiAtual + '_' + leitoDestino;
+
+    if (!confirm('Remanejar ' + nomePct + '\nDe: Leito ' + leitoAtual + ' → Para: Leito ' + leitoDestino + '\n\nToda a admissão e evoluções serão transferidas.\n\nConfirmar?')) return;
+
+    // Remove modal
+    var modal = document.getElementById('modalRemanej');
+    if (modal) modal.remove();
+
+    // 1. Copiar dados de admissão para novo leito
+    db.collection('leitos').doc(chaveOrigem).get().then(function(docAdm) {
+      if (!docAdm.exists) { alert('Dados da admissão não encontrados.'); return; }
+      var dadosAdm = docAdm.data();
+      dadosAdm._remanejadoDe = 'Leito ' + leitoAtual;
+      dadosAdm._remanejadoEm = new Date().toISOString();
+
+      // 2. Copiar evoluções
+      return db.collection('evolucoes').where('leitoId','==',chaveOrigem).get()
+        .then(function(snapEvo) {
+          var batch = db.batch();
+
+          // Salvar admissão no novo leito
+          batch.set(db.collection('leitos').doc(chaveDestino), dadosAdm);
+
+          // Limpar leito de origem
+          batch.delete(db.collection('leitos').doc(chaveOrigem));
+
+          // Copiar evoluções para novo leito e remover das antigas
+          snapEvo.forEach(function(doc) {
+            var d = doc.data();
+            d.leitoId = chaveDestino;
+            d.leito   = leitoDestino;
+            var novoId = 'evo_' + chaveDestino + '_' + doc.id.split('_').pop();
+            batch.set(db.collection('evolucoes').doc(novoId), d);
+            batch.delete(db.collection('evolucoes').doc(doc.id));
+          });
+
+          return batch.commit();
+        });
+    }).then(function() {
+      alert('✅ Remanejamento concluído!\n' + nomePct + ' transferido para Leito ' + leitoDestino + '.');
+      // Ir para o novo leito
+      var sel = document.getElementById('seletorLeito');
+      if (sel) { sel.value = leitoDestino; trocarLeito(); }
+    }).catch(function(e) {
+      alert('❌ Erro no remanejamento: ' + e.message);
+    });
+  }
+
 
   function gerarTexto() {
     var linhas = [];
@@ -4540,6 +4756,19 @@ function evoGerarTexto() {
       if (cultPosGerme)  cultStr += ' — Germe: '+cultPosGerme;
       if (cultPosTxt)    cultStr += ' — '+cultPosTxt;
       infParts.push(cultStr);
+    }
+    var atbSusp2 = evoVal('evo_atb_suspensos'); if (atbSusp2) infParts.push('Suspensos: '+atbSusp2);
+    var febreSel2 = qs('input[name="evo_febre"]:checked');
+    if (febreSel2) {
+      var febrePer2 = evoVal('evo_febre_periodo') || '24h';
+      var febreEp2  = evoVal('evo_febre_episodios');
+      var febrePico2= evoVal('evo_febre_pico');
+      var febreTxt2 = 'Febre ('+febrePer2+'): '+febreSel2.value;
+      if (febreSel2.value==='sim') {
+        if (febreEp2)   febreTxt2 += ' — '+febreEp2+' ep.';
+        if (febrePico2) febreTxt2 += ' pico '+febrePico2+'°C';
+      }
+      infParts.push(febreTxt2);
     }
     var marc = [];
     function addM(lbl,key){ var v=evoVal(key); if(v) marc.push(lbl+': '+v); }
