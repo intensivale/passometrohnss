@@ -1494,6 +1494,11 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
         <input name="evo_hemo_spo2" type="text"/>
 </label>
 </div>
+<div class="row" style="margin-bottom:8px;">
+<label style="flex:1; min-width:100%;">Exame físico cardiovascular:
+  <textarea name="evo_exame_cardio" rows="2" placeholder="Bulhas, sopros, pulsos, perfusão periférica, edemas..."></textarea>
+</label>
+</div>
 <div class="row" style="align-items: center; gap: 10px;">
 <div style="min-width: 260px;">Vasoativos/Inotrópicos:</div>
 <label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
@@ -1609,11 +1614,6 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 </label>
 <label style="min-width: 180px;">BNP:
   <input name="evo_bnp" type="text"/>
-</label>
-</div>
-<div class="row" style="margin-top:10px;">
-<label style="flex:1; min-width:100%;">Exame físico cardiovascular:
-  <textarea name="evo_exame_cardio" rows="2" placeholder="Bulhas, sopros, pulsos, perfusão periférica, edemas..."></textarea>
 </label>
 </div>
 </div>
@@ -2052,6 +2052,12 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <!-- Nutrição -->
 <div class="section" id="evo_nutricao_gi">
 <h3>Nutrição / Gastrointestinal</h3>
+<div class="row" style="margin-bottom:8px;">
+<label style="flex:1; min-width:100%;">Exame físico abdominal:
+  <textarea name="evo_exame_abdominal" rows="2" placeholder="Ruídos hidroaéreos, dor, distensão, ascite, fígado, baço..."></textarea>
+</label>
+</div>
+<hr style="border:0;border-top:1px solid #e5e7eb;margin:8px 0 12px 0;"/>
 <div class="row grid-2">
 <label>VET pleno (kcal/dia):
       <input name="evo_vet_kcal" placeholder="kcal/dia" step="1" type="number"/>
@@ -2183,11 +2189,6 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <div style="min-width: 220px;">Profilaxia úlcera de estresse:</div>
 <label><input name="evo_profilaxia_ulcera" type="radio" value="sim"/> Sim</label>
 <label><input name="evo_profilaxia_ulcera" type="radio" value="nao"/> Não</label>
-</div>
-<div class="row" style="margin-top:10px;">
-<label style="flex:1; min-width:100%;">Exame físico abdominal:
-  <textarea name="evo_exame_abdominal" rows="2" placeholder="Ruídos hidroaéreos, dor, distensão, ascite, fígado, baço..."></textarea>
-</label>
 </div>
 <hr style="border:0;border-top:1px solid #e5e7eb;margin:12px 0;"/>
 <div style="font-weight: bold; margin-bottom: 8px; color: #4e342e;">Função Hepática / Pancreática</div>
