@@ -1611,6 +1611,11 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
   <input name="evo_bnp" type="text"/>
 </label>
 </div>
+<div class="row" style="margin-top:10px;">
+<label style="flex:1; min-width:100%;">Exame físico cardiovascular:
+  <textarea name="evo_exame_cardio" rows="2" placeholder="Bulhas, sopros, pulsos, perfusão periférica, edemas..."></textarea>
+</label>
+</div>
 </div>
 <!-- Renal / Metabólico -->
 <div class="section">
@@ -2178,6 +2183,11 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <div style="min-width: 220px;">Profilaxia úlcera de estresse:</div>
 <label><input name="evo_profilaxia_ulcera" type="radio" value="sim"/> Sim</label>
 <label><input name="evo_profilaxia_ulcera" type="radio" value="nao"/> Não</label>
+</div>
+<div class="row" style="margin-top:10px;">
+<label style="flex:1; min-width:100%;">Exame físico abdominal:
+  <textarea name="evo_exame_abdominal" rows="2" placeholder="Ruídos hidroaéreos, dor, distensão, ascite, fígado, baço..."></textarea>
+</label>
 </div>
 <hr style="border:0;border-top:1px solid #e5e7eb;margin:12px 0;"/>
 <div style="font-weight: bold; margin-bottom: 8px; color: #4e342e;">Função Hepática / Pancreática</div>
@@ -3318,10 +3328,29 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     var spo2   = _ev('evo_hemo_spo2')||_v('hemo_spo2');
     var drogas = [];
     var _dg = function(lbl,ek,ak){ var v=_ev(ek)||_v(ak); if(v) drogas.push(lbl+' '+v); };
-    _dg('Dobu:','evo_dobutamina_dose','dobutamina_dose');
-    _dg('Mili:','evo_milrinona_dose','milrinona_dose');
-    _dg('Nora:','evo_noradrenalina_dose','noradrenalina_dose');
-    _dg('Vaso:','evo_vasopressina_dose','vasopressina_dose');
+    _dg('Dobutamina','evo_dobutamina_dose','dobutamina_dose');
+    _dg('Milrinona','evo_milrinona_dose','milrinona_dose');
+    _dg('Noradrenalina','evo_noradrenalina_dose','noradrenalina_dose');
+    _dg('Vasopressina','evo_vasopressina_dose','vasopressina_dose');
+    // Sedação / analgesia em infusão contínua
+    var sedMeds = [
+      {id:'evo_med_midazolam',   label:'Midazolam',   doseId:'dose_evo_med_midazolam'},
+      {id:'evo_med_fentanil',    label:'Fentanil',    doseId:'dose_evo_med_fentanil'},
+      {id:'evo_med_remifentanil',label:'Remifentanil',doseId:'dose_evo_med_remifentanil'},
+      {id:'evo_med_precedex',    label:'Precedex',    doseId:'dose_evo_med_precedex'},
+      {id:'evo_med_propofol',    label:'Propofol',    doseId:'dose_evo_med_propofol'},
+      {id:'evo_med_ketamina',    label:'Ketamina',    doseId:'dose_evo_med_ketamina'},
+      {id:'evo_med_rocuronio',   label:'Rocurônio',   doseId:'dose_evo_med_rocuronio'},
+      {id:'evo_med_cisatracurio',label:'Cisatracúrio',doseId:'dose_evo_med_cisatracurio'},
+    ];
+    sedMeds.forEach(function(m) {
+      var chk = document.getElementById(m.id);
+      if (chk && chk.checked) {
+        var doseEl = document.getElementById(m.doseId);
+        var dose = doseEl ? (doseEl.value || '').trim() : '';
+        drogas.push(m.label + (dose ? ' ' + dose : ''));
+      }
+    });
     var lactato = _ev('evo_perf_lactato');
     var ecgTxt  = _ev('evo_ecg_txt')||_v('ecg_admissao');
     var pocusTxt= _ev('evo_pocus_card_texto')||_v('pocus_admissao');
@@ -3989,9 +4018,34 @@ if (tipo === 'VM') vm.classList.remove('hidden');
           'evo_hipo', 'evo_hipo_periodo', 'evo_hipo_glicose',
           'evo_hiper', 'evo_hiper_periodo', 'evo_hiper_insulina',
           'evo_profilaxia_ulcera',
-          'evo_impressao'
+          'evo_impressao',
+          'evo_via_alimentacao',
+          'evo_dieta_oral_desc', 'evo_dieta_parenteral_desc',
+          'evo_atb_suspensos',
+          'evo_exame_cardio', 'evo_exame_abdominal',
+          'evo_febre', 'evo_febre_periodo', 'evo_febre_episodios', 'evo_febre_pico'
         ];
         
+        // ── Se houve transfusão na evolução anterior, registrar em problemas ──
+        var transfParts = [];
+        var tipos = ['ch','plaq','plasma','crio'];
+        var nomes = {ch:'CH', plaq:'Plaquetas', plasma:'Plasma', crio:'Crioprecipitado'};
+        tipos.forEach(function(tipo) {
+          var chkKey = 'evo_transf_' + tipo + '::sim';
+          var qtdKey = 'evo_transf_' + tipo + '_qtd';
+          if (data[chkKey]) {
+            var qtd = (data[qtdKey] || '').trim();
+            transfParts.push(nomes[tipo] + (qtd ? ' '+qtd+'U' : ''));
+          }
+        });
+        if (transfParts.length > 0) {
+          var transfTxt = 'Transfusão realizada: ' + transfParts.join(', ');
+          var probEl = area.querySelector('[name="evo_problemas"]');
+          if (probEl) {
+            probEl.value = probEl.value ? probEl.value + '\n' + transfTxt : transfTxt;
+          }
+        }
+
         var camposDaAdmissao = [
           'evo_comorbidades',
           'evo_cirurgias',
@@ -4919,6 +4973,10 @@ function evoGerarTexto() {
         linhas.push('');
     }
 
+    var examCardio = evoVal('evo_exame_cardio');
+    if (examCardio) { linhas.push('Exame físico cardiovascular: ' + examCardio); linhas.push(''); }
+    var examAbd = evoVal('evo_exame_abdominal');
+    if (examAbd) { linhas.push('Exame físico abdominal: ' + examAbd); linhas.push(''); }
     var imp = evoVal('evo_impressao'); if (imp) { linhas.push('Impressão clínica:'); linhas.push(imp); linhas.push(''); }
     var pl = evoVal('evo_plano_24h'); if (pl) { linhas.push('Plano/metas 24h:'); linhas.push(pl); linhas.push(''); }
 
