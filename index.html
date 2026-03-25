@@ -1752,47 +1752,114 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
   <input name="evo_febre_pico" placeholder="Pico (°C)" type="text" style="width:100px;"/>
 </div>
 </div>
-<div class="row nowrap" style="align-items: center;">
-<div style="min-width: 120px;">Culturas:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_culturas" onclick="evoToggleCulturas('pendentes')" type="radio" value="pendentes"/> Pendentes
-</label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_culturas" onclick="evoToggleCulturas('negativas')" type="radio" value="negativas"/> Negativas
-</label>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input name="evo_culturas" onclick="evoToggleCulturas('positivas')" type="radio" value="positivas"/> Positivas
-</label>
+<!-- ===== CULTURAS (estruturado, similar ao ATB) ===== -->
+<div style="font-weight:bold; color:#555; margin-bottom:6px;">Culturas</div>
+<div id="evo_cult_linhas">
+  <!-- Linha 1 -->
+  <div class="evo-cult-linha" id="evo_cult_linha_1" style="display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; margin-bottom:6px;">
+    <label style="min-width:180px;">Tipo:
+      <select name="evo_cult1_tipo" onchange="evoCultToggleResultado(1)">
+        <option value="">—</option>
+        <option value="Hemocultura">Hemocultura</option>
+        <option value="Hemocultura do cateter">Hemocultura do cateter</option>
+        <option value="Urocultura">Urocultura</option>
+        <option value="Secreção traqueal">Secreção traqueal</option>
+        <option value="Líquor">Líquor</option>
+        <option value="Swab de rastreio">Swab de rastreio</option>
+        <option value="Outros">Outros</option>
+      </select>
+    </label>
+    <label style="min-width:130px;">Data coleta:
+      <input name="evo_cult1_data" type="date" style="width:100%;"/>
+    </label>
+    <label style="min-width:130px;">Resultado:
+      <select name="evo_cult1_resultado" onchange="evoCultToggleResultado(1)">
+        <option value="">—</option>
+        <option value="Pendente">Pendente</option>
+        <option value="Negativa">Negativa</option>
+        <option value="Positiva">Positiva</option>
+      </select>
+    </label>
+    <div id="evo_cult1_pos_wrap" class="hidden" style="display:flex;flex-wrap:wrap;gap:8px;flex:1;min-width:300px;">
+      <label style="flex:1;min-width:200px;">Germe:
+        <input name="evo_cult1_germe" type="text" placeholder="ex: E. coli ESBL, MRSA..."/>
+      </label>
+      <label style="flex:1;min-width:200px;">Sensibilidade:
+        <input name="evo_cult1_sens" type="text" placeholder="ex: sensível a carbapenêmicos..."/>
+      </label>
+    </div>
+  </div>
+  <!-- Linha 2 -->
+  <div class="evo-cult-linha" id="evo_cult_linha_2" style="display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; margin-bottom:6px;">
+    <label style="min-width:180px;">Tipo:
+      <select name="evo_cult2_tipo" onchange="evoCultToggleResultado(2)">
+        <option value="">—</option>
+        <option value="Hemocultura">Hemocultura</option>
+        <option value="Hemocultura do cateter">Hemocultura do cateter</option>
+        <option value="Urocultura">Urocultura</option>
+        <option value="Secreção traqueal">Secreção traqueal</option>
+        <option value="Líquor">Líquor</option>
+        <option value="Swab de rastreio">Swab de rastreio</option>
+        <option value="Outros">Outros</option>
+      </select>
+    </label>
+    <label style="min-width:130px;">Data coleta:
+      <input name="evo_cult2_data" type="date" style="width:100%;"/>
+    </label>
+    <label style="min-width:130px;">Resultado:
+      <select name="evo_cult2_resultado" onchange="evoCultToggleResultado(2)">
+        <option value="">—</option>
+        <option value="Pendente">Pendente</option>
+        <option value="Negativa">Negativa</option>
+        <option value="Positiva">Positiva</option>
+      </select>
+    </label>
+    <div id="evo_cult2_pos_wrap" class="hidden" style="display:flex;flex-wrap:wrap;gap:8px;flex:1;min-width:300px;">
+      <label style="flex:1;min-width:200px;">Germe:
+        <input name="evo_cult2_germe" type="text" placeholder="ex: K. pneumoniae KPC..."/>
+      </label>
+      <label style="flex:1;min-width:200px;">Sensibilidade:
+        <input name="evo_cult2_sens" type="text" placeholder="ex: sensível a polimixina..."/>
+      </label>
+    </div>
+  </div>
+  <!-- Linha 3 -->
+  <div class="evo-cult-linha" id="evo_cult_linha_3" style="display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; margin-bottom:6px;">
+    <label style="min-width:180px;">Tipo:
+      <select name="evo_cult3_tipo" onchange="evoCultToggleResultado(3)">
+        <option value="">—</option>
+        <option value="Hemocultura">Hemocultura</option>
+        <option value="Hemocultura do cateter">Hemocultura do cateter</option>
+        <option value="Urocultura">Urocultura</option>
+        <option value="Secreção traqueal">Secreção traqueal</option>
+        <option value="Líquor">Líquor</option>
+        <option value="Swab de rastreio">Swab de rastreio</option>
+        <option value="Outros">Outros</option>
+      </select>
+    </label>
+    <label style="min-width:130px;">Data coleta:
+      <input name="evo_cult3_data" type="date" style="width:100%;"/>
+    </label>
+    <label style="min-width:130px;">Resultado:
+      <select name="evo_cult3_resultado" onchange="evoCultToggleResultado(3)">
+        <option value="">—</option>
+        <option value="Pendente">Pendente</option>
+        <option value="Negativa">Negativa</option>
+        <option value="Positiva">Positiva</option>
+      </select>
+    </label>
+    <div id="evo_cult3_pos_wrap" class="hidden" style="display:flex;flex-wrap:wrap;gap:8px;flex:1;min-width:300px;">
+      <label style="flex:1;min-width:200px;">Germe:
+        <input name="evo_cult3_germe" type="text" placeholder="Germe..."/>
+      </label>
+      <label style="flex:1;min-width:200px;">Sensibilidade:
+        <input name="evo_cult3_sens" type="text" placeholder="Sensibilidade..."/>
+      </label>
+    </div>
+  </div>
 </div>
-<!-- Pendentes -->
-<div class="hidden" id="evo_cult_pend_wrap" style="margin-top: 8px; background: #fff8e1; border: 1px solid #ffe082; border-radius: 6px; padding: 10px 12px;">
-<div style="font-weight: bold; margin-bottom: 8px; color: #f57f17;">⏳ Culturas Pendentes</div>
-<div class="row nowrap" style="flex-wrap: wrap; gap: 10px;">
-<label style="min-width: 200px;">Sítio de coleta:
-  <input name="evo_cult_pend_sitio" placeholder="ex: hemocultura, urocultura..." type="text" style="width: 100%;"/>
-</label>
-<label style="min-width: 180px;">Data/hora da coleta:
-  <input name="evo_cult_pend_data" placeholder="ex: 10/03 08:00" type="text" style="width: 100%;"/>
-</label>
-</div>
-</div>
-<!-- Positivas -->
-<div class="hidden" id="evo_cult_pos_wrap" style="margin-top: 8px; background: #fce4ec; border: 1px solid #ef9a9a; border-radius: 6px; padding: 10px 12px;">
-<div style="font-weight: bold; margin-bottom: 8px; color: #b71c1c;">🦠 Culturas Positivas</div>
-<div class="row nowrap" style="flex-wrap: wrap; gap: 10px;">
-<label style="min-width: 200px;">Sítio de coleta:
-  <input name="evo_cult_pos_sitio" placeholder="ex: hemocultura, urocultura..." type="text" style="width: 100%;"/>
-</label>
-<label style="min-width: 180px;">Data/hora da coleta:
-  <input name="evo_cult_pos_data" placeholder="ex: 10/03 08:00" type="text" style="width: 100%;"/>
-</label>
-<label style="min-width: 280px; flex: 1;">Germe identificado:
-  <input name="evo_cult_pos_germe" placeholder="ex: E. coli ESBL, MRSA..." type="text" style="width: 100%;"/>
-</label>
-<label style="min-width: 240px; flex: 1;">Sensibilidade/Resistência:
-  <input name="evo_cult_pos_txt" placeholder="ex: sensível a carbapenêmicos..." type="text" style="width: 100%;"/>
-</label>
-</div>
+<div style="margin-top:4px; margin-bottom:8px;">
+  <button type="button" onclick="evoCultAdicionarLinha()" style="background:#e8f5e9; border:1px solid #66bb6a; color:#2e7d32; border-radius:5px; padding:4px 14px; cursor:pointer; font-size:12px;">+ Adicionar cultura</button>
 </div>
 <div class="row nowrap">
 <label style="min-width: 220px;">Leucócitos:
@@ -3423,15 +3490,20 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     if(marc.length) infLine.push(marc.join(' | '));
 
     // Culturas (linha separada)
-    var cultSel2=qs('input[name="evo_culturas"]:checked')||qs('input[name="inf_culturas"]:checked');
-    var cultStr='';
-    if(cultSel2){
-      if(cultSel2.value==='positivas'){ cultStr='Positivas'; var cg=_ev('evo_cult_pos_germe'); if(cg) cultStr+=' — '+cg; }
-      else if(cultSel2.value==='pendentes'){ cultStr='Pendentes'; var cs=_ev('evo_cult_pend_sitio'); if(cs) cultStr+=' ('+cs+')'; }
-      else if(cultSel2.value==='negativas') cultStr='Negativas';
-      else if(cultSel2.value==='sim') cultStr='Coletadas';
-      else if(cultSel2.value==='nao') cultStr='Não coletadas';
+    // Culturas estruturadas na folha
+    var cultLinhasF = [];
+    var _cultMaxF = (typeof _evoCultCount !== 'undefined') ? _evoCultCount : 3;
+    for (var cfi=1; cfi<=_cultMaxF; cfi++) {
+      var cfTipo=_ev('evo_cult'+cfi+'_tipo'), cfData=_ev('evo_cult'+cfi+'_data');
+      var cfRes=_ev('evo_cult'+cfi+'_resultado'), cfGerme=_ev('evo_cult'+cfi+'_germe');
+      if (!cfTipo && !cfRes) continue;
+      var cfStr=(cfTipo||'Cultura');
+      if (cfData) cfStr+=' ('+cfData+')';
+      if (cfRes)  cfStr+=': '+cfRes;
+      if (cfRes==='Positiva'&&cfGerme) cfStr+=' — '+cfGerme;
+      cultLinhasF.push(cfStr);
     }
+    var cultStr = cultLinhasF.length ? cultLinhasF.join(' | ') : '';
     var atbSuspF = _ev('evo_atb_suspensos');
     var febreSelF = qs('input[name="evo_febre"]:checked');
     var febreTxtF = '';
@@ -3997,7 +4069,9 @@ if (tipo === 'VM') vm.classList.remove('hidden');
           'evo_inf_foco', 'evo_inf_atb1', 'evo_inf_data_atb1', 'evo_inf_dia_atb1', 'evo_inf_total_atb1',
           'evo_inf_atb2', 'evo_inf_data_atb2', 'evo_inf_dia_atb2', 'evo_inf_total_atb2',
           'evo_inf_atb3', 'evo_inf_data_atb3', 'evo_inf_dia_atb3', 'evo_inf_total_atb3',
-          'evo_culturas', 'evo_cult_pend_data', 'evo_cult_pos_txt',
+          'evo_cult1_tipo','evo_cult1_data','evo_cult1_resultado','evo_cult1_germe','evo_cult1_sens',
+          'evo_cult2_tipo','evo_cult2_data','evo_cult2_resultado','evo_cult2_germe','evo_cult2_sens',
+          'evo_cult3_tipo','evo_cult3_data','evo_cult3_resultado','evo_cult3_germe','evo_cult3_sens',
           'evo_cvc_local', 'evo_cvc_data', 'evo_cvc_dias',
           'evo_art_local', 'evo_art_data', 'evo_art_dias',
           'evo_hd_local', 'evo_hd_data', 'evo_hd_dias',
@@ -4082,6 +4156,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
         });
         
         if (typeof evoToggleCulturas === 'function') evoToggleCulturas();
+    if (typeof evoCultRestaurarWraps === 'function') evoCultRestaurarWraps();
         
         setTimeout(function() {
           if (typeof calcularDiasATB === 'function') calcularDiasATB();
@@ -4213,22 +4288,63 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     }
   }
 
-  function evoToggleCulturas(tipo) {
-    var sel = qs('input[name="evo_culturas"]:checked');
-    var valor = sel ? sel.value : '';
+  var _evoCultCount = 3; // começa com 3 linhas fixas no HTML
 
-    var pendWrap = byId('evo_cult_pend_wrap');
-    var posWrap  = byId('evo_cult_pos_wrap');
+  function evoCultAdicionarLinha() {
+    _evoCultCount++;
+    var n = _evoCultCount;
+    var tipoOpts = ['','Hemocultura','Hemocultura do cateter','Urocultura','Secreção traqueal','Líquor','Swab de rastreio','Outros']
+      .map(function(o){ return '<option value="'+o+'">'+(o||'—')+'</option>'; }).join('');
 
-    // Esconder tudo e limpar
-    [pendWrap, posWrap].forEach(function(w) {
-      if (!w) return;
-      w.classList.add('hidden');
-      w.querySelectorAll('input').forEach(function(i) { i.value = ''; });
-    });
+    var html = '<div class="evo-cult-linha" id="evo_cult_linha_'+n+'" '
+      + 'style="display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; margin-bottom:6px;">'
+      + '<label style="min-width:180px;">Tipo:'
+      + '<select name="evo_cult'+n+'_tipo" onchange="evoCultToggleResultado('+n+')">'+tipoOpts+'</select></label>'
+      + '<label style="min-width:130px;">Data coleta:'
+      + '<input name="evo_cult'+n+'_data" type="date" style="width:100%;"/></label>'
+      + '<label style="min-width:130px;">Resultado:'
+      + '<select name="evo_cult'+n+'_resultado" onchange="evoCultToggleResultado('+n+')">'
+      + '<option value="">—</option><option value="Pendente">Pendente</option>'
+      + '<option value="Negativa">Negativa</option><option value="Positiva">Positiva</option>'
+      + '</select></label>'
+      + '<div id="evo_cult'+n+'_pos_wrap" class="hidden" '
+      + 'style="display:flex;flex-wrap:wrap;gap:8px;flex:1;min-width:300px;">'
+      + '<label style="flex:1;min-width:200px;">Germe:'
+      + '<input name="evo_cult'+n+'_germe" type="text" placeholder="Germe..."/></label>'
+      + '<label style="flex:1;min-width:200px;">Sensibilidade:'
+      + '<input name="evo_cult'+n+'_sens" type="text" placeholder="Sensibilidade..."/></label>'
+      + '</div>'
+      + '<button type="button" onclick="evoCultRemoverLinha('+n+')" '
+      + 'style="background:#ffebee;border:1px solid #ef9a9a;color:#c62828;border-radius:5px;'
+      + 'padding:4px 10px;cursor:pointer;font-size:12px;align-self:flex-end;">✕</button>'
+      + '</div>';
 
-    if (valor === 'pendentes' && pendWrap) pendWrap.classList.remove('hidden');
-    if (valor === 'positivas' && posWrap)  posWrap.classList.remove('hidden');
+    var container = document.getElementById('evo_cult_linhas');
+    if (container) container.insertAdjacentHTML('beforeend', html);
+  }
+
+  function evoCultRemoverLinha(n) {
+    var linha = document.getElementById('evo_cult_linha_'+n);
+    if (linha) linha.remove();
+  }
+
+  function evoToggleCulturas() { /* compatibilidade — substituído por evoCultToggleResultado */ }
+
+  function evoCultToggleResultado(n) {
+    var res = qs('[name="evo_cult'+n+'_resultado"]');
+    var wrap = byId('evo_cult'+n+'_pos_wrap');
+    if (!wrap) return;
+    if (res && res.value === 'Positiva') {
+      wrap.classList.remove('hidden');
+      wrap.style.display = 'flex';
+    } else {
+      wrap.classList.add('hidden');
+      wrap.querySelectorAll('input').forEach(function(i){ i.value=''; });
+    }
+  }
+
+  function evoCultRestaurarWraps() {
+    for (var n=1; n<=3; n++) evoCultToggleResultado(n);
   }
 
   function evoToggleTEV() {
@@ -4790,28 +4906,27 @@ function evoGerarTexto() {
       // d já vem com "D0", "D1" etc, não precisa adicionar D novamente
       if (a) atbs.push(a + ((d||t) ? (' ('+(d||'')+' de '+(t||'')+')') : ''));
     }
-    var cult = evoVal('evo_culturas');
-    var cultPendSitio = evoVal('evo_cult_pend_sitio'), cultPendData = evoVal('evo_cult_pend_data');
-    var cultPosSitio  = evoVal('evo_cult_pos_sitio'),  cultPosData  = evoVal('evo_cult_pos_data');
-    var cultPosGerme  = evoVal('evo_cult_pos_germe'),  cultPosTxt   = evoVal('evo_cult_pos_txt');
+    // Culturas estruturadas
+    var cultLinhas = [];
+    var _cultMax = (typeof _evoCultCount !== 'undefined') ? _evoCultCount : 3;
+    for (var ci=1; ci<=_cultMax; ci++) {
+      var cTipo = evoVal('evo_cult'+ci+'_tipo');
+      var cData = evoVal('evo_cult'+ci+'_data');
+      var cRes  = evoVal('evo_cult'+ci+'_resultado');
+      var cGerme= evoVal('evo_cult'+ci+'_germe');
+      var cSens = evoVal('evo_cult'+ci+'_sens');
+      if (!cTipo && !cRes) continue;
+      var cStr = (cTipo||'Cultura');
+      if (cData) cStr += ' ('+cData+')';
+      if (cRes)  cStr += ': '+cRes;
+      if (cRes==='Positiva' && cGerme) cStr += ' — '+cGerme;
+      if (cSens) cStr += ' ['+cSens+']';
+      cultLinhas.push(cStr);
+    }
     var infParts = [];
     if (foco) infParts.push('Foco: '+foco);
     if (atbs.length) infParts.push('ATB: '+atbs.join(' | '));
-    if (cult === 'pendentes') {
-      var cultPStr = 'Culturas: pendentes';
-      if (cultPendSitio) cultPStr += ' — Sítio: '+cultPendSitio;
-      if (cultPendData)  cultPStr += ' — Coleta: '+cultPendData;
-      infParts.push(cultPStr);
-    } else if (cult === 'negativas') {
-      infParts.push('Culturas: negativas');
-    } else if (cult === 'positivas') {
-      var cultStr = 'Culturas: positivas';
-      if (cultPosSitio)  cultStr += ' — Sítio: '+cultPosSitio;
-      if (cultPosData)   cultStr += ' — Coleta: '+cultPosData;
-      if (cultPosGerme)  cultStr += ' — Germe: '+cultPosGerme;
-      if (cultPosTxt)    cultStr += ' — '+cultPosTxt;
-      infParts.push(cultStr);
-    }
+    if (cultLinhas.length) infParts.push('Culturas: '+cultLinhas.join(' | '));
     var atbSusp2 = evoVal('evo_atb_suspensos'); if (atbSusp2) infParts.push('Suspensos: '+atbSusp2);
     var febreSel2 = qs('input[name="evo_febre"]:checked');
     if (febreSel2) {
@@ -8689,13 +8804,19 @@ function renderizarFolhaEspelho(evos, nomePct, dadosAdm) {
   var culturas = [];
   evos.forEach(function(evo) {
     var d = evo.dados || {};
-    var cult = (d['evo_culturas'] || '').trim();
-    var cultPos = (d['evo_cult_pos_txt'] || '').trim();
-    var cultData = (d['evo_cult_pend_data'] || '').trim();
-    if (cult === 'positivas' && cultPos) {
-      culturas.push(cultPos + (cultData ? ' (' + cultData + ')' : ''));
-    } else if (cult === 'pendentes' && cultData) {
-      culturas.push('Pendente: ' + cultData);
+    for (var ci=1; ci<=3; ci++) {
+      var cTipo = (d['evo_cult'+ci+'_tipo'] || '').trim();
+      var cData = (d['evo_cult'+ci+'_data'] || '').trim();
+      var cRes  = (d['evo_cult'+ci+'_resultado'] || '').trim();
+      var cGerme= (d['evo_cult'+ci+'_germe'] || '').trim();
+      var cSens = (d['evo_cult'+ci+'_sens'] || '').trim();
+      if (!cTipo && !cRes) continue;
+      var cStr = (cTipo||'Cultura');
+      if (cData)  cStr += ' (' + cData + ')';
+      if (cRes)   cStr += ': ' + cRes;
+      if (cGerme) cStr += ' — ' + cGerme;
+      if (cSens)  cStr += ' [' + cSens + ']';
+      culturas.push(cStr);
     }
   });
   var cultUniq = culturas.filter(function(v, i, a) { return a.indexOf(v) === i; });
