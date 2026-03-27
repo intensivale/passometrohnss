@@ -3715,39 +3715,59 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     var modal = document.getElementById('modalRemanej');
     if (modal) modal.remove();
 
-    // 1. Copiar dados de admissão para novo leito
+    var _admRemanej = null;
+    var _evolsRemanej = [];
+
+    // 1. Buscar e arquivar dados antes de mover
     db.collection('leitos').doc(chaveOrigem).get().then(function(docAdm) {
       if (!docAdm.exists) { alert('Dados da admissão não encontrados.'); return; }
-      var dadosAdm = docAdm.data();
-      dadosAdm._remanejadoDe = 'Leito ' + leitoAtual;
-      dadosAdm._remanejadoEm = new Date().toISOString();
+      _admRemanej = docAdm.data();
+      _admRemanej._remanejadoDe = 'Leito ' + leitoAtual;
+      _admRemanej._remanejadoEm = new Date().toISOString();
 
-      // 2. Copiar evoluções
       return db.collection('evolucoes').where('leitoId','==',chaveOrigem).get()
         .then(function(snapEvo) {
+          snapEvo.forEach(function(doc) { _evolsRemanej.push(doc.data()); });
+
+          // Arquivar cópia de segurança
+          return arquivarLeito(chaveOrigem, _admRemanej, _evolsRemanej,
+            'remanejamento para leito ' + leitoDestino,
+            currentUser ? currentUser.email : '');
+        })
+        .then(function() {
+          return registrarAuditoria('REMANEJAMENTO', {
+            nome: nomePct,
+            de: chaveOrigem,
+            para: chaveDestino,
+            totalEvolucoes: _evolsRemanej.length
+          });
+        })
+        .then(function() {
           var batch = db.batch();
 
           // Salvar admissão no novo leito
-          batch.set(db.collection('leitos').doc(chaveDestino), dadosAdm);
+          batch.set(db.collection('leitos').doc(chaveDestino), _admRemanej);
 
           // Limpar leito de origem
           batch.delete(db.collection('leitos').doc(chaveOrigem));
 
           // Copiar evoluções para novo leito e remover das antigas
-          snapEvo.forEach(function(doc) {
-            var d = doc.data();
-            d.leitoId = chaveDestino;
-            d.leito   = leitoDestino;
-            var novoId = 'evo_' + chaveDestino + '_' + doc.id.split('_').pop();
-            batch.set(db.collection('evolucoes').doc(novoId), d);
-            batch.delete(db.collection('evolucoes').doc(doc.id));
-          });
-
-          return batch.commit();
+          var snapEvo2;
+          return db.collection('evolucoes').where('leitoId','==',chaveOrigem).get()
+            .then(function(snap) {
+              snap.forEach(function(doc) {
+                var d = doc.data();
+                d.leitoId = chaveDestino;
+                d.leito   = leitoDestino;
+                var novoId = 'evo_' + chaveDestino + '_' + doc.id.split('_').pop();
+                batch.set(db.collection('evolucoes').doc(novoId), d);
+                batch.delete(db.collection('evolucoes').doc(doc.id));
+              });
+              return batch.commit();
+            });
         });
     }).then(function() {
       alert('✅ Remanejamento concluído!\n' + nomePct + ' transferido para Leito ' + leitoDestino + '.');
-      // Ir para o novo leito
       var sel = document.getElementById('seletorLeito');
       if (sel) { sel.value = leitoDestino; trocarLeito(); }
     }).catch(function(e) {
@@ -6880,6 +6900,46 @@ function salvarEvolucao() {
 
 // ========== ALTAS COM FIREBASE ==========
 
+// ===== AUDITORIA E ARQUIVO DE SEGURANÇA =====
+
+function registrarAuditoria(operacao, detalhes) {
+    if (typeof db === 'undefined' || !currentUser) return Promise.resolve();
+    var registro = {
+        operacao: operacao,
+        usuario: currentUser.email,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        leito: ctiAtual + '_' + leitoAtual,
+        detalhes: detalhes || {}
+    };
+    return db.collection('_auditoria').add(registro).catch(function(e) {
+        console.warn('Auditoria falhou (não crítico):', e.message);
+    });
+}
+
+function arquivarLeito(chave, dadosAdm, evolucoes, motivo, usuario) {
+    // Salva cópia completa em _arquivo antes de qualquer delete
+    var doc = {
+        _arquivadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+        _motivo: motivo || 'não informado',
+        _arquivadoPor: usuario || (currentUser ? currentUser.email : 'desconhecido'),
+        _chaveOriginal: chave,
+        admissao: dadosAdm,
+        evolucoes: evolucoes
+    };
+    return db.collection('_arquivo').add(doc);
+}
+
+function confirmarComNome(nomePaciente, mensagem) {
+    var digitado = prompt(mensagem + '\n\nDigite o nome do paciente para confirmar:\n');
+    if (!digitado) return false;
+    var norm = function(s) { return s.trim().toLowerCase().replace(/\s+/g,' '); };
+    if (norm(digitado) !== norm(nomePaciente)) {
+        alert('Nome incorreto. Operação cancelada.');
+        return false;
+    }
+    return true;
+}
+
 function darAlta() {
     var nomePaciente = document.getElementsByName("nome")[0]?.value || "";
     
@@ -6889,7 +6949,7 @@ function darAlta() {
     }
     
     if (!confirm("⚠️ DAR ALTA ao paciente:\n\n" + nomePaciente + "\n\n" + ctiAtual.replace('CTI', 'CTI ') + " - Leito " + leitoAtual + "\n\nGerar resumo de alta?")) return;
-    
+
     // Mostrar modal
     mostrarModalResumoAlta(nomePaciente, false);
     
@@ -7326,8 +7386,33 @@ function executarAlta(nomePaciente) {
     
     atualizarSyncStatus('pending');
     
-    // Salvar na coleção de altas
-    db.collection('altas').add(registroAlta)
+    // Arquivar dados completos ANTES de qualquer delete
+    var _chaveLeito = getChaveLeitoFirebase();
+    var _conteudoAdm = null;
+    var _evolsParaArquivo = [];
+
+    db.collection('leitos').doc(_chaveLeito).get()
+        .then(function(docAdm) {
+            _conteudoAdm = docAdm.exists ? docAdm.data() : {};
+            return db.collection('evolucoes').where('leitoId', '==', prefixoLeito).get();
+        })
+        .then(function(snapEvos) {
+            snapEvos.forEach(function(d) { _evolsParaArquivo.push(d.data()); });
+            // Salvar arquivo de segurança
+            return arquivarLeito(_chaveLeito, _conteudoAdm, _evolsParaArquivo, 'alta', currentUser ? currentUser.email : '');
+        })
+        .then(function() {
+            // Registrar auditoria
+            return registrarAuditoria('ALTA', {
+                nome: nomePaciente,
+                leito: _chaveLeito,
+                totalEvolucoes: _evolsParaArquivo.length
+            });
+        })
+        .then(function() {
+            // Salvar na coleção de altas
+            return db.collection('altas').add(registroAlta);
+        })
         .then(function() {
             // Excluir todas as evoluções deste leito
             return db.collection('evolucoes')
@@ -7350,7 +7435,7 @@ function executarAlta(nomePaciente) {
                 localStorage.removeItem('evolucao_last_' + ctiAtual + '_' + leitoAtual);
                 localStorage.removeItem('LEITO_' + ctiAtual + '_' + leitoAtual);
             } catch(e) {}
-            
+
             return db.collection('leitos').doc(getChaveLeitoFirebase()).delete();
         })
         .then(function() {
