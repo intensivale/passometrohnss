@@ -3390,16 +3390,17 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     })();
 
     // Hemodinâmica
-    var ritmo  = _ev('evo_hemo_ritmo')||_v('hemo_ritmo');
-    var pa     = _ev('evo_hemo_pa')||_v('hemo_pa');
-    var fc     = _ev('evo_hemo_fc')||_v('hemo_fc');
-    var spo2   = _ev('evo_hemo_spo2')||_v('hemo_spo2');
+    var ritmo  = _ev('evo_hemo_ritmo');
+    var pa     = _ev('evo_hemo_pa');
+    var fc     = _ev('evo_hemo_fc');
+    var spo2   = _ev('evo_hemo_spo2');
     var drogas = [];
-    var _dg = function(lbl,ek,ak){ var v=_ev(ek)||_v(ak); if(v) drogas.push(lbl+' '+v); };
-    _dg('Dobutamina','evo_dobutamina_dose','dobutamina_dose');
-    _dg('Milrinona','evo_milrinona_dose','milrinona_dose');
-    _dg('Noradrenalina','evo_noradrenalina_dose','noradrenalina_dose');
-    _dg('Vasopressina','evo_vasopressina_dose','vasopressina_dose');
+    // Apenas da evolução diária — não puxar da admissão
+    var _dg = function(lbl,ek){ var v=_ev(ek); if(v) drogas.push(lbl+' '+v); };
+    _dg('Dobutamina','evo_dobutamina_dose');
+    _dg('Milrinona','evo_milrinona_dose');
+    _dg('Noradrenalina','evo_noradrenalina_dose');
+    _dg('Vasopressina','evo_vasopressina_dose');
     // Sedação / analgesia em infusão contínua
     var sedMeds = [
       {id:'evo_med_midazolam',   label:'Midazolam',   doseId:'dose_evo_med_midazolam'},
@@ -3435,18 +3436,18 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     if(ecgTxt)   hemoLine.push('ECG: '+ecgTxt);
 
     // Respiratório
-    var respSel = qs('input[name="evo_resp_suporte"]:checked')||qs('input[name="resp_suporte"]:checked');
+    var respSel = qs('input[name="evo_resp_suporte"]:checked');
     var sup = respSel ? respSel.value : '';
     var respDet = [];
-    var _rp = function(lbl,ek,ak){ var v=_ev(ek)||_v(ak||''); if(v) respDet.push(lbl+': '+v); };
+    var _rp = function(lbl,ek){ var v=_ev(ek); if(v) respDet.push(lbl+': '+v); };
     if(sup==='VM'){
-      _rp('Modo','evo_vm_modo','vm_modo'); _rp('PS/Pinsp','evo_vm_pinsp_ps','vm_pinsp_ps');
-      _rp('VC','evo_vm_vc','vm_vc'); _rp('FR','evo_vm_fr','vm_fr');
-      _rp('PEEP','evo_vm_peep','vm_peep'); _rp('FiO2','evo_vm_fio2','vm_fio2');
-      _rp('Ppico','evo_vm_ppico','vm_ppico'); _rp('Drive','evo_vm_drive','vm_drive');
-    } else if(sup==='CN'){ var cl=_ev('evo_cn_litros')||_v('cn_litros'); if(cl) respDet.push(cl+' L/min CN'); }
-      else if(sup==='Venturi'){ var vf=_ev('evo_venturi_fio2')||_v('venturi_fio2'); if(vf) respDet.push('Venturi FiO2 '+vf+'%'); }
-      else if(sup==='MR'){ var ml=_ev('evo_mr_litros')||_v('mr_litros'); if(ml) respDet.push(ml+' L/min MR'); }
+      _rp('Modo','evo_vm_modo'); _rp('PS/Pinsp','evo_vm_pinsp_ps');
+      _rp('VC','evo_vm_vc'); _rp('FR','evo_vm_fr');
+      _rp('PEEP','evo_vm_peep'); _rp('FiO2','evo_vm_fio2');
+      _rp('Ppico','evo_vm_ppico'); _rp('Drive','evo_vm_drive');
+    } else if(sup==='CN'){ var cl=_ev('evo_cn_litros'); if(cl) respDet.push(cl+' L/min CN'); }
+      else if(sup==='Venturi'){ var vf=_ev('evo_venturi_fio2'); if(vf) respDet.push('Venturi FiO2 '+vf+'%'); }
+      else if(sup==='MR'){ var ml=_ev('evo_mr_litros'); if(ml) respDet.push(ml+' L/min MR'); }
     var gasoDet=[];
     var _ga=function(lbl,ek){ var v=_ev(ek); if(v) gasoDet.push(lbl+': '+v); };
     _ga('pH','evo_gas_ph'); _ga('pO2','evo_gas_po2'); _ga('pCO2','evo_gas_pco2');
