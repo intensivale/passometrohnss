@@ -528,7 +528,10 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 </div>
 <div class="row nowrap" style="justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
 <button onclick="verResumoCTI()" type="button" style="background: #26a69a; color: white; font-weight: bold; padding: 10px 20px;">
-    📊 Resumo CTI
+    🛏️ Ocupação UTI
+</button>
+<button onclick="abrirResumoUTI()" type="button" style="background: #00838f; color: white; font-weight: bold; padding: 10px 20px;">
+    📋 Resumo UTI
 </button>
 <button onclick="darAlta()" type="button" style="background: #ff5722; color: white; font-weight: bold; padding: 10px 20px;">
     🏠 Dar Alta
@@ -6941,6 +6944,213 @@ function confirmarComNome(nomePaciente, mensagem) {
     return true;
 }
 
+// ===== RESUMO UTI CLÍNICO =====
+function abrirResumoUTI() {
+  var modal = document.getElementById('modalResumoUTI');
+  if (modal) {
+    modal.style.display = 'flex';
+    renderizarResumoUTI();
+  }
+}
+
+function fecharResumoUTI() {
+  var modal = document.getElementById('modalResumoUTI');
+  if (modal) modal.style.display = 'none';
+}
+
+function renderizarResumoUTI() {
+  var container = document.getElementById('conteudoResumoUTI');
+  var sub = document.getElementById('resumoUTISubtitulo');
+  if (!container) return;
+  container.innerHTML = '<div style="text-align:center; padding:40px; color:#666;">⏳ Carregando dados da UTI...</div>';
+
+  var hoje = new Date();
+  var dataStr = String(hoje.getDate()).padStart(2,'0') + '/' + String(hoje.getMonth()+1).padStart(2,'0') + '/' + hoje.getFullYear()
+    + ' ' + String(hoje.getHours()).padStart(2,'0') + ':' + String(hoje.getMinutes()).padStart(2,'0');
+  if (sub) sub.textContent = 'Gerado em ' + dataStr;
+
+  // Busca admissões + última evolução de cada leito
+  Promise.all([
+    db.collection('leitos').get(),
+    db.collection('evolucoes').get()
+  ]).then(function(results) {
+    var snapLeitos = results[0];
+    var snapEvos   = results[1];
+
+    // Montar mapa de admissões
+    var admMap = {};
+    snapLeitos.forEach(function(doc) { admMap[doc.id] = doc.data(); });
+
+    // Montar mapa da última evolução por leito
+    var evoMap = {};
+    var evosArr = [];
+    snapEvos.forEach(function(doc) { evosArr.push(doc.data()); });
+    evosArr.sort(function(a,b) {
+      var ta = a.timestamp ? a.timestamp.toMillis() : 0;
+      var tb = b.timestamp ? b.timestamp.toMillis() : 0;
+      return ta - tb;
+    });
+    evosArr.forEach(function(e) {
+      if (e.leitoId) evoMap[e.leitoId] = e; // sobrescreve com mais recente
+    });
+
+    var ocupados = 0;
+    var html = '';
+
+    leitosCTI1.forEach(function(num) {
+      var chave = 'CTI1_' + num;
+      var adm = admMap[chave] || null;
+      var evo = evoMap[chave] ? (evoMap[chave].dados || {}) : {};
+      var nome = (adm && adm.nome) ? adm.nome.trim() : '';
+
+      if (nome) ocupados++;
+
+      html += gerarCardResumoUTI(num, adm, evo, nome);
+    });
+
+    var livres = leitosCTI1.length - ocupados;
+    if (sub) sub.textContent = 'Gerado em ' + dataStr + ' | ' + ocupados + ' ocupados · ' + livres + ' livres';
+
+    container.innerHTML = '<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(480px,1fr)); gap:12px;">' + html + '</div>';
+  }).catch(function(e) {
+    container.innerHTML = '<div style="color:red; padding:20px;">Erro: ' + e.message + '</div>';
+  });
+}
+
+function gerarCardResumoUTI(num, adm, evo, nome) {
+  if (!nome) {
+    return '<div style="background:#fff; border:1px solid #e0e0e0; border-radius:8px; padding:14px; opacity:0.5;">'
+      + '<div style="font-weight:bold; color:#90a4ae;">Box ' + num + ' — Vago</div>'
+      + '</div>';
+  }
+
+  function g(key) { return (evo[key] || '').trim(); }
+  function adg(key) { return (adm && adm[key]) ? String(adm[key]).trim() : ''; }
+
+  // Diagnóstico: da admissão ou motivo UTI da evolução
+  var diag = adg('diagnostico_internacao') || g('evo_motivo_uti');
+
+  // Problemas ativos
+  var prob = g('evo_problemas');
+
+  // Invasivos
+  var inv = [];
+  var _iv = function(lbl, loc, dias) {
+    if (loc || dias) inv.push(lbl + (loc ? ' ' + loc : '') + (dias ? ' ' + dias : ''));
+  };
+  _iv('CVC',     g('evo_cvc_local'),  g('evo_cvc_dias'));
+  _iv('Art',     g('evo_art_local'),  g('evo_art_dias'));
+  _iv('HD',      g('evo_hd_local'),   g('evo_hd_dias'));
+  _iv('SVD',     g('evo_svd_local'),  g('evo_svd_dias'));
+  _iv('TOT/TQT', g('evo_tot_local'),  g('evo_tot_dias'));
+  var drenos = g('evo_drenos_outros'); if (drenos) inv.push(drenos);
+
+  // Aminas
+  var aminas = [];
+  if (g('evo_dobutamina_dose'))    aminas.push('Dobu ' + g('evo_dobutamina_dose'));
+  if (g('evo_milrinona_dose'))     aminas.push('Mili ' + g('evo_milrinona_dose'));
+  if (g('evo_noradrenalina_dose')) aminas.push('Nora ' + g('evo_noradrenalina_dose'));
+  if (g('evo_vasopressina_dose'))  aminas.push('Vaso ' + g('evo_vasopressina_dose'));
+
+  // ATB
+  var atbs = [];
+  for (var i=1; i<=3; i++) {
+    var a = g('evo_inf_atb'+i), d = g('evo_inf_dia_atb'+i), t = g('evo_inf_total_atb'+i);
+    if (a) atbs.push(a + (d ? ' (' + d + (t ? ' de ' + t : '') + ')' : ''));
+  }
+
+  // Febre
+  var febre = '';
+  var febreVal = g('evo_febre');
+  if (febreVal === 'sim') {
+    febre = 'Sim';
+    var per = g('evo_febre_periodo') || '24h';
+    var ep  = g('evo_febre_episodios');
+    var pic = g('evo_febre_pico');
+    febre += ' (' + per + (ep ? ' · ' + ep + ' ep.' : '') + (pic ? ' · pico ' + pic + '°C' : '') + ')';
+  } else if (febreVal === 'nao') {
+    febre = 'Não';
+  }
+
+  // Função renal
+  var renal = [];
+  var cr = g('evo_creatinina'); if (cr) renal.push('Cr ' + cr);
+  var ur = g('evo_ureia');      if (ur) renal.push('Ur ' + ur);
+  var cl = g('evo_clcr_cg');   if (cl) renal.push('ClCr ' + cl);
+  var diu = g('evo_diurese_ml'); if (diu) renal.push('Diu ' + diu + 'mL');
+  var bh  = g('evo_bh_ml');    if (bh) renal.push('BH ' + bh + 'mL');
+  var trs = g('evo_trs');      if (trs === 'sim') renal.push('TRS: ' + (g('evo_trs_tipo') || 'sim'));
+
+  // Medicações atuais
+  var meds = g('evo_medicacoes_atuais');
+
+  // Impressão
+  var imp = g('evo_impressao');
+
+  // Plano/conduta
+  var plano = g('evo_plano_24h');
+
+  // Data da última evolução
+  var dataEvo = '';
+  if (evo['evo_data']) {
+    try {
+      var _d = new Date(evo['evo_data']);
+      if (!isNaN(_d.getTime()))
+        dataEvo = String(_d.getDate()).padStart(2,'0') + '/' + String(_d.getMonth()+1).padStart(2,'0');
+    } catch(e) {}
+  }
+
+  function linha(lbl, val, cor) {
+    if (!val) return '';
+    return '<div style="margin:3px 0; font-size:12px;">'
+      + '<span style="font-weight:bold; color:' + (cor||'#37474f') + ';">' + lbl + ':</span> '
+      + '<span>' + escapeHtml(val) + '</span></div>';
+  }
+
+  var hasEvo = Object.keys(evo).length > 0;
+  var evoLabel = hasEvo && dataEvo ? ' <span style="font-size:10px; background:#e0f2f1; color:#00695c; padding:1px 6px; border-radius:10px; margin-left:4px;">evo ' + dataEvo + '</span>' : '';
+
+  return '<div style="background:#fff; border:1px solid #b2dfdb; border-radius:8px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.08);">'
+    // Header
+    + '<div style="background:#00838f; color:white; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">'
+    + '<div><b style="font-size:14px;">Box ' + num + '</b> <span style="font-size:13px; opacity:0.9;">— ' + escapeHtml(nome) + '</span>' + evoLabel + '</div>'
+    + '</div>'
+    // Body
+    + '<div style="padding:10px 14px;">'
+    + linha('Diagnóstico', diag, '#1565c0')
+    + linha('Problemas ativos', prob, '#6a1b9a')
+    + linha('Invasivos', inv.join(' | '), '#e65100')
+    + linha('Aminas', aminas.join(' | '), '#b71c1c')
+    + linha('ATB', atbs.join(' | '), '#2e7d32')
+    + linha('Febre', febre, '#f57f17')
+    + linha('Função renal', renal.join(' | '), '#01579b')
+    + linha('Medicações atuais', meds, '#4a148c')
+    + linha('Impressão clínica', imp, '#37474f')
+    + linha('Conduta do dia', plano, '#1b5e20')
+    + '</div>'
+    + '</div>';
+}
+
+function imprimirResumoUTI() {
+  var conteudo = document.getElementById('conteudoResumoUTI');
+  if (!conteudo) return;
+  var hoje = new Date();
+  var dataStr = String(hoje.getDate()).padStart(2,'0') + '/' + String(hoje.getMonth()+1).padStart(2,'0') + '/' + hoje.getFullYear()
+    + ' ' + String(hoje.getHours()).padStart(2,'0') + ':' + String(hoje.getMinutes()).padStart(2,'0');
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Resumo UTI</title>'
+    + '<style>body{font-family:Arial,sans-serif;font-size:11px;margin:8mm;} '
+    + '.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;} '
+    + '@media print{body{margin:5mm;} @page{size:A4 landscape;margin:5mm;}}</style>'
+    + '</head><body>'
+    + '<h2 style="text-align:center;margin:0 0 8px;font-size:13px;">📋 Resumo UTI — HNSS Diamantina — ' + dataStr + '</h2>'
+    + '<div class="grid">' + conteudo.innerHTML + '</div>'
+    + '<scr' + 'ipt>window.onload=function(){window.print();}</' + 'scr' + 'ipt>'
+    + '</body></html>';
+  var w = window.open('','_blank','width=1100,height=800');
+  if (!w) { alert('Permita pop-ups para imprimir.'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+}
+
 function darAlta() {
     var nomePaciente = document.getElementsByName("nome")[0]?.value || "";
     
@@ -8080,7 +8290,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <div id="modalResumoCTI" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center;">
 <div style="background: white; width: 95%; max-width: 1200px; max-height: 90%; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
 <div style="background: #26a69a; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center;">
-    <h2 style="margin: 0;">📊 Resumo do CTI - Quadro de Ocupação</h2>
+    <h2 style="margin: 0;">🛏️ Ocupação UTI - Quadro de Leitos</h2>
     <button onclick="fecharModalResumoCTI()" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer;">&times;</button>
 </div>
 <div style="padding: 10px 20px; background: #e0f2f1; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
@@ -8088,6 +8298,24 @@ document.addEventListener('DOMContentLoaded', function() {
     <button onclick="renderizarResumoCTI()" style="background: #00796b; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">🔄 Atualizar</button>
 </div>
 <div id="conteudoResumoCTI" style="padding: 20px; overflow-y: auto; flex: 1;"></div>
+</div>
+</div>
+
+<!-- MODAL: Resumo UTI Clínico -->
+<div id="modalResumoUTI" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:9999; justify-content:center; align-items:center;">
+<div style="background:white; width:98%; max-width:1300px; max-height:93vh; border-radius:12px; overflow:hidden; display:flex; flex-direction:column;">
+  <div style="background:#00838f; color:white; padding:16px 20px; display:flex; justify-content:space-between; align-items:center;">
+    <div>
+      <h2 style="margin:0; font-size:18px;">📋 Resumo UTI — HNSS Diamantina</h2>
+      <div id="resumoUTISubtitulo" style="font-size:12px; opacity:0.85; margin-top:2px;"></div>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <button onclick="renderizarResumoUTI()" style="background:#006064; color:white; border:none; padding:7px 14px; border-radius:6px; cursor:pointer; font-size:13px;">🔄 Atualizar</button>
+      <button onclick="imprimirResumoUTI()" style="background:#37474f; color:white; border:none; padding:7px 14px; border-radius:6px; cursor:pointer; font-size:13px;">🖨️ Imprimir</button>
+      <button onclick="fecharResumoUTI()" style="background:none; border:none; color:white; font-size:26px; cursor:pointer; line-height:1;">&times;</button>
+    </div>
+  </div>
+  <div id="conteudoResumoUTI" style="padding:16px; overflow-y:auto; flex:1; background:#f5f5f5;"></div>
 </div>
 </div>
 
