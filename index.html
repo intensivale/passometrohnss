@@ -3672,7 +3672,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     }
 
     // Descobrir leitos disponíveis (sem paciente)
-    var leitos = [1,2,3,4,5,6,7,8,9,10];
+    var leitos = (ctiAtual === 'CTI1') ? leitosCTI1 : leitosCTI2;
     var leitosDisponiveis = leitos.filter(function(n) { return n !== leitoAtual; });
 
     // Buscar quais leitos têm paciente
