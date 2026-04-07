@@ -536,6 +536,9 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <button onclick="darAlta()" type="button" style="background: #ff5722; color: white; font-weight: bold; padding: 10px 20px;">
     🏠 Dar Alta
 </button>
+<button onclick="abrirRelatorioAltaIA()" type="button" style="background: #6a1b9a; color: white; font-weight: bold; padding: 10px 20px;">
+    📄 Relatório Alta/Transferência
+</button>
 <button onclick="abrirRemanejamento()" type="button" style="background: #e65100; color: white; font-weight: bold; padding: 10px 20px;">
     🔄 Remanejamento
 </button>
@@ -6040,7 +6043,7 @@ function evoGerarTexto() {
     }
 
 
-var leitosCTI1 = [1,2,3,4,5,6,7,8,9,10];
+var leitosCTI1 = [1,2,3,4,5,6,7,8,9,10,11];
 var leitosCTI2 = [1,2,3,4,5,6,7,8,9,10];
 
 var ctiAtual = 'CTI1';
@@ -6545,8 +6548,15 @@ function atualizarSelectLeitos() {
                 }
                 
                 if (!temPaciente) {
-                    opt.textContent = '🟢 Leito ' + num + ' (vago)';
-                    opt.style.color = '#2e7d32';
+                    if (num === 11) {
+                        opt.textContent = '🟡 Leito Extra / Bloco (vago)';
+                        opt.style.color = '#e65100';
+                    } else {
+                        opt.textContent = '🟢 Leito ' + num + ' (vago)';
+                        opt.style.color = '#2e7d32';
+                    }
+                } else if (num === 11) {
+                    opt.textContent = '🟠 Extra/Bloco - ' + (dados.nome||'').substring(0,12);
                 }
                 
                 selLeito.appendChild(opt);
@@ -6948,6 +6958,178 @@ function confirmarComNome(nomePaciente, mensagem) {
         return false;
     }
     return true;
+}
+
+// ===== RELATÓRIO DE ALTA / TRANSFERÊNCIA =====
+
+function abrirRelatorioAlta() {
+  var modal = document.getElementById('modalRelatorioAlta');
+  if (!modal) return;
+  var nome = (document.getElementsByName('nome')[0]||{}).value || '';
+  if (!nome.trim()) { alert('Não há paciente neste leito.'); return; }
+  document.getElementById('relatorioAltaNome').textContent = nome + ' — Leito ' + leitoAtual;
+  document.getElementById('relatorioAltaTexto').value = '';
+  document.getElementById('relatorioAltaStatus').textContent = '';
+  modal.style.display = 'flex';
+}
+
+// Alias chamado pelo botão no header
+function abrirRelatorioAltaIA() { abrirRelatorioAlta(); }
+
+function fecharRelatorioAlta() {
+  var modal = document.getElementById('modalRelatorioAlta');
+  if (modal) modal.style.display = 'none';
+}
+
+async function gerarRelatorioAltaIA() {
+  var statusEl = document.getElementById('relatorioAltaStatus');
+  var textoEl  = document.getElementById('relatorioAltaTexto');
+  if (!textoEl) return;
+
+  if (statusEl) statusEl.textContent = '✨ Buscando evoluções...';
+
+  var dadosResumo = (typeof coletarDadosParaResumo === 'function') ? coletarDadosParaResumo() : {};
+  var leitoId = ctiAtual + '_' + leitoAtual;
+  var evolucoes = [];
+
+  try {
+    var snap = await db.collection('evolucoes').where('leitoId','==',leitoId).get();
+    snap.forEach(function(doc) { evolucoes.push(doc.data()); });
+    evolucoes.sort(function(a,b) {
+      var ta = a.timestamp ? a.timestamp.toMillis() : 0;
+      var tb = b.timestamp ? b.timestamp.toMillis() : 0;
+      return ta - tb;
+    });
+  } catch(e) {}
+
+  if (statusEl) statusEl.textContent = '✨ Gerando relatório (' + evolucoes.length + ' evoluções)...';
+
+  // Montar dados
+  var linhas = [];
+  linhas.push('IDENTIFICAÇÃO: ' + (dadosResumo.nome||'') + ', ' + (dadosResumo.idade||'') + ' anos, sexo ' + (dadosResumo.sexo||''));
+  linhas.push('Data admissão UTI: ' + (dadosResumo.dataAdmissao||''));
+  linhas.push('Diagnóstico: ' + (dadosResumo.motivoUTI || dadosResumo.hma || ''));
+  linhas.push('HPP: ' + (dadosResumo.hpp||'') + (dadosResumo.cirurgias ? ' | Cirurgias: '+dadosResumo.cirurgias : ''));
+  linhas.push('Alergias: ' + (dadosResumo.alergias||'Não referidas'));
+  linhas.push('Total de evoluções: ' + evolucoes.length);
+
+  if (evolucoes.length > 0) {
+    linhas.push('\nEVOLUÇÃO CRONOLÓGICA:');
+    evolucoes.forEach(function(evo, idx) {
+      var d = evo.dados || {};
+      var data = (evo.data||'').split(' ')[0] || ('D'+(idx+1));
+      var _g = function(k){ return (d[k]||'').trim(); };
+      var items = [];
+      if (_g('evo_problemas'))         items.push('Problemas: '+_g('evo_problemas').substring(0,150));
+      if (_g('evo_hemo_pa'))           items.push('PA: '+_g('evo_hemo_pa'));
+      if (_g('evo_hemo_fc'))           items.push('FC: '+_g('evo_hemo_fc'));
+      var sup = _g('evo_resp_suporte'); if (sup) items.push('Resp: '+sup);
+      if (_g('evo_noradrenalina_dose')) items.push('Nora: '+_g('evo_noradrenalina_dose'));
+      if (_g('evo_dobutamina_dose'))    items.push('Dobu: '+_g('evo_dobutamina_dose'));
+      if (_g('evo_creatinina'))         items.push('Cr: '+_g('evo_creatinina'));
+      if (_g('evo_diurese_ml'))         items.push('Diu: '+_g('evo_diurese_ml')+'mL');
+      if (_g('evo_bh_ml'))             items.push('BH: '+_g('evo_bh_ml')+'mL');
+      if (_g('evo_glasgow_total'))      items.push('GCS: '+_g('evo_glasgow_total'));
+      var atbs=[]; for(var i=1;i<=3;i++){var a=_g('evo_inf_atb'+i),di=_g('evo_inf_dia_atb'+i),t=_g('evo_inf_total_atb'+i); if(a) atbs.push(a+(di?'('+di+(t?' de '+t:'')+')':'')); }
+      if (atbs.length) items.push('ATB: '+atbs.join(', '));
+      var febre=_g('evo_febre'); if(febre==='sim') items.push('Febre: sim ('+(_g('evo_febre_episodios')||'?')+' ep.)');
+      if (_g('evo_impressao'))  items.push('Impressão: '+_g('evo_impressao').substring(0,200));
+      if (_g('evo_plano_24h'))  items.push('Plano: '+_g('evo_plano_24h').substring(0,150));
+      if (items.length) linhas.push('['+data+'] '+items.join(' | '));
+    });
+  }
+
+  // Status atual (última evolução)
+  if (evolucoes.length > 0) {
+    var ultima = evolucoes[evolucoes.length-1].dados || {};
+    var _u = function(k){ return (ultima[k]||'').trim(); };
+    linhas.push('\nSTATUS ATUAL (última evolução):');
+    var atbs2=[]; for(var j=1;j<=3;j++){var a2=_u('evo_inf_atb'+j),d2=_u('evo_inf_dia_atb'+j),t2=_u('evo_inf_total_atb'+j); if(a2) atbs2.push(a2+(d2?'('+d2+(t2?' de '+t2:'')+')':'')); }
+    if (atbs2.length) linhas.push('ATB: '+atbs2.join(', '));
+    var inv2=[]; var _iv2=function(l,loc,dia){if(loc||dia) inv2.push(l+(loc?' '+loc:'')+(dia?' '+dia:''));};
+    _iv2('CVC',_u('evo_cvc_local'),_u('evo_cvc_dias'));
+    _iv2('SVD',_u('evo_svd_local'),_u('evo_svd_dias'));
+    _iv2('TOT/TQT',_u('evo_tot_local'),_u('evo_tot_dias'));
+    _iv2('CVC HD',_u('evo_hd_local'),_u('evo_hd_dias'));
+    var dr2=_u('evo_drenos_outros'); if(dr2) inv2.push('Drenos: '+dr2);
+    if (inv2.length) linhas.push('Invasivos: '+inv2.join(' | '));
+    if (_u('evo_medicacoes_atuais')) linhas.push('Medicações: '+_u('evo_medicacoes_atuais'));
+    var via=_u('evo_via_alimentacao');
+    var dieta=_u('evo_dieta_select')||_u('evo_dieta_oral_desc')||_u('evo_dieta_parenteral_desc');
+    if (via||dieta) linhas.push('Nutrição: '+(via?via+' ':'')+dieta);
+    if (_u('evo_creatinina')) linhas.push('Creatinina atual: '+_u('evo_creatinina'));
+    if (_u('evo_trs')==='sim') linhas.push('TRS: sim ('+_u('evo_trs_tipo')+')');
+  }
+
+  var dadosStr = linhas.join('\n');
+
+  var prompt = 'Você é um intensivista experiente da UTI do Hospital Nossa Senhora da Saúde de Diamantina, '
+    + 'redigindo um resumo de alta/transferência de UTI para o médico receptor.\n'
+    + 'REGRAS:\n'
+    + '- Português médico técnico e direto\n'
+    + '- Inclua apenas tópicos com dados disponíveis\n'
+    + '- NÃO invente dados ausentes\n'
+    + '- Use linguagem evolutiva e narrativa\n\n'
+    + 'ESTRUTURA:\n'
+    + '[IDENTIFICAÇÃO] Paciente, idade, sexo, dias de UTI, datas de admissão e alta/transferência.\n'
+    + '[DIAGNÓSTICO PRINCIPAL] Motivo de internação em uma frase.\n'
+    + '[EVOLUÇÃO CLÍNICA] Narrativa cronológica dos principais eventos. Máximo 8 linhas.\n'
+    + '[STATUS NA ALTA/TRANSFERÊNCIA]\n'
+    + '- Hemodinâmico: aminas, PA, FC\n'
+    + '- Respiratório: suporte atual e parâmetros\n'
+    + '- Neurológico: Glasgow, sedação\n'
+    + '- Renal: creatinina, diurese, TRS\n'
+    + '- Infeccioso: foco, ATB com dias\n'
+    + '- Nutricional: via e dieta\n'
+    + '[DISPOSITIVOS] Invasivos presentes com data de inserção e dias.\n'
+    + '[ANTIMICROBIANOS] Nome, dose, dia de tratamento, previsão de término.\n'
+    + '[PENDÊNCIAS] Culturas em aberto, exames pendentes, reavaliações. Omitir se não houver.\n\n'
+    + 'DADOS DO PACIENTE:\n' + dadosStr;
+
+  try {
+    var resp = await fetch('https://us-central1-gestaoutihnss.cloudfunctions.net/claudeProxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    var data = await resp.json();
+    var texto = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text.trim() : '';
+    if (texto) {
+      textoEl.value = texto;
+      if (statusEl) statusEl.textContent = '✅ Relatório gerado';
+      setTimeout(function(){ if(statusEl) statusEl.textContent=''; }, 5000);
+    } else {
+      if (statusEl) statusEl.textContent = '❌ Sem resposta da IA';
+    }
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '❌ Erro: ' + e.message;
+  }
+}
+
+function imprimirRelatorioAlta() {
+  var texto = document.getElementById('relatorioAltaTexto');
+  var nome  = document.getElementById('relatorioAltaNome');
+  if (!texto || !texto.value.trim()) { alert('Gere o relatório antes de imprimir.'); return; }
+  var hoje = new Date();
+  var dataStr = String(hoje.getDate()).padStart(2,'0')+'/'+String(hoje.getMonth()+1).padStart(2,'0')+'/'+hoje.getFullYear();
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Relatório de Alta</title>'
+    + '<style>body{font-family:Arial,sans-serif;font-size:12px;margin:15mm;line-height:1.6;} '
+    + 'h1{font-size:14px;text-align:center;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:12px;} '
+    + 'pre{white-space:pre-wrap;font-family:Arial,sans-serif;font-size:12px;}'
+    + '@media print{@page{size:A4 portrait;margin:12mm;}}</style>'
+    + '</head><body>'
+    + '<h1>RELATÓRIO DE ALTA / TRANSFERÊNCIA — HNSS Diamantina — ' + dataStr + '</h1>'
+    + '<p style="font-size:11px; color:#555;">' + (nome ? nome.textContent : '') + '</p>'
+    + '<pre>' + texto.value + '</pre>'
+    + '<scr'+'ipt>window.onload=function(){window.print();}</'+'scr'+'ipt>'
+    + '</body></html>';
+  var w = window.open('','_blank','width=800,height=1000');
+  if (!w) { alert('Permita pop-ups.'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
 }
 
 // ===== RESUMO UTI CLÍNICO =====
@@ -8582,6 +8764,27 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
   </div>
   <div id="conteudoResumoUTI" style="padding:16px; overflow-y:auto; flex:1; background:#f5f5f5;"></div>
+</div>
+</div>
+
+<!-- MODAL: Relatório de Alta/Transferência com IA -->
+<div id="modalRelatorioAlta" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:9999; justify-content:center; align-items:center;">
+<div style="background:white; width:95%; max-width:900px; max-height:92vh; border-radius:12px; overflow:hidden; display:flex; flex-direction:column;">
+  <div style="background:#6a1b9a; color:white; padding:16px 20px; display:flex; justify-content:space-between; align-items:center;">
+    <div>
+      <h2 style="margin:0; font-size:17px;">📄 Relatório de Alta / Transferência</h2>
+      <div id="relatorioAltaNome" style="font-size:12px; opacity:0.85; margin-top:2px;"></div>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <span id="relatorioAltaStatus" style="font-size:12px; opacity:0.9;"></span>
+      <button onclick="gerarRelatorioAltaIA()" style="background:#4a148c; color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-size:13px;">✨ Gerar com IA</button>
+      <button onclick="imprimirRelatorioAlta()" style="background:#37474f; color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-size:13px;">🖨️ Imprimir</button>
+      <button onclick="fecharRelatorioAlta()" style="background:none; border:none; color:white; font-size:26px; cursor:pointer; line-height:1;">&times;</button>
+    </div>
+  </div>
+  <div style="padding:16px 20px; flex:1; overflow-y:auto;">
+    <textarea id="relatorioAltaTexto" style="width:100%; height:500px; font-family:Arial,sans-serif; font-size:13px; padding:14px; border:1px solid #ddd; border-radius:6px; resize:vertical; line-height:1.6;" placeholder="Clique em ✨ Gerar com IA para criar o relatório automaticamente com todas as evoluções do paciente..."></textarea>
+  </div>
 </div>
 </div>
 
