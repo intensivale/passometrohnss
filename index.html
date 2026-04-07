@@ -3685,8 +3685,12 @@ if (tipo === 'VM') vm.classList.remove('hidden');
 
       var opcoes = leitosDisponiveis.map(function(n) {
         var chave = ctiAtual + '_' + n;
-        var status = ocupados[chave] ? '⚠️ Ocupado: ' + ocupados[chave] : '✅ Vago';
-        return { num: n, chave: chave, status: status, vago: !ocupados[chave] };
+        var isExtra = (n === 11);
+        var nomeOcup = ocupados[chave] || '';
+        var vago = !nomeOcup;
+        var label = isExtra ? 'Extra/Bloco' : ('Leito ' + n);
+        var status = vago ? (isExtra ? '🟡 Disponível (Bloco)' : '✅ Vago') : '⚠️ Ocupado: ' + nomeOcup;
+        return { num: n, chave: chave, status: status, vago: vago, isExtra: isExtra, label: label };
       });
 
       // Montar modal simples
@@ -3698,11 +3702,13 @@ if (tipo === 'VM') vm.classList.remove('hidden');
         + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">';
 
       opcoes.forEach(function(op) {
-        var bg = op.vago ? '#e8f5e9' : '#fff8e1';
-        var border = op.vago ? '#4caf50' : '#ff9800';
+        var bg, border;
+        if (op.isExtra && op.vago)   { bg='#fff8e1'; border='#ffa726'; }
+        else if (op.vago)             { bg='#e8f5e9'; border='#4caf50'; }
+        else                          { bg='#fafafa'; border='#bdbdbd'; }
         html += '<button onclick="confirmarRemanejamento(' + op.num + ')" '
           + 'style="background:' + bg + ';border:2px solid ' + border + ';border-radius:6px;padding:8px;cursor:pointer;text-align:left;font-size:12px;">'
-          + '<b>Leito ' + op.num + '</b><br><span style="font-size:11px;">' + op.status + '</span>'
+          + '<b>' + op.label + '</b><br><span style="font-size:11px;">' + op.status + '</span>'
           + '</button>';
       });
 
