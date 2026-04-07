@@ -2478,6 +2478,12 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <div class="row">
 <textarea name="evo_impressao" rows="4" style="width: 100%;"></textarea>
 </div>
+<div style="margin-top:6px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+  <button type="button" onclick="gerarImpressaoClinicaIA()" style="background:#7b1fa2; color:white; border:none; padding:7px 16px; border-radius:6px; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:6px;">
+    ✨ Gerar com IA
+  </button>
+  <span id="iaImpressaoStatus" style="font-size:12px; color:#666;"></span>
+</div>
 </div>
 <div class="section">
 <h3>Plano / Metas das próximas 24h</h3>
@@ -7151,6 +7157,262 @@ function imprimirResumoUTI() {
   w.document.open(); w.document.write(html); w.document.close();
 }
 
+// ============================================================
+// IA — Impressão Clínica Diária
+// ============================================================
+function gerarImpressaoClinicaIA() {
+  var area = document.getElementById('evolucaoArea');
+  if (!area) return;
+
+  var statusEl = document.getElementById('iaImpressaoStatus');
+  var campo = area.querySelector('[name="evo_impressao"]');
+  if (!campo) return;
+
+  function ev(k) { var el = area.querySelector('[name="'+k+'"]'); return el ? (el.value||'').trim() : ''; }
+  function ck(k) { var el = area.querySelector('[name="'+k+'"]:checked'); return el ? el.value : ''; }
+
+  // Montar dados clínicos para o prompt
+  var dados = [];
+  var nome = ev('evo_nome') || (document.getElementsByName('nome')[0]||{}).value || '';
+  var dia  = ev('evo_dia_uti');
+  var dx   = ev('evo_dx_principal') || ev('evo_motivo_uti');
+  if (nome) dados.push('Paciente: ' + nome);
+  if (dia)  dados.push('Dia UTI: ' + dia);
+  if (dx)   dados.push('Diagnóstico principal: ' + dx);
+
+  var prob = ev('evo_problemas'); if (prob) dados.push('Problemas ativos: ' + prob);
+
+  // Hemodinâmica
+  var hemo = [];
+  var ritmo=ev('evo_hemo_ritmo'), pa=ev('evo_hemo_pa'), fc=ev('evo_hemo_fc'), spo2=ev('evo_hemo_spo2');
+  if (ritmo) hemo.push('Ritmo: '+ritmo); if (pa) hemo.push('PA: '+pa);
+  if (fc)    hemo.push('FC: '+fc);      if (spo2) hemo.push('SpO2: '+spo2);
+  var nora=ev('evo_noradrenalina_dose'), dobu=ev('evo_dobutamina_dose');
+  var mili=ev('evo_milrinona_dose'),     vaso=ev('evo_vasopressina_dose');
+  if (nora) hemo.push('Noradrenalina: '+nora); if (dobu) hemo.push('Dobutamina: '+dobu);
+  if (mili) hemo.push('Milrinona: '+mili);     if (vaso) hemo.push('Vasopressina: '+vaso);
+  if (!nora && !dobu && !mili && !vaso) hemo.push('Sem DVA');
+  if (hemo.length) dados.push('Hemodinâmica: ' + hemo.join(' | '));
+
+  // Respiratório
+  var sup = ck('evo_resp_suporte');
+  var resp = []; if (sup) resp.push('Suporte: '+sup);
+  var vm_modo=ev('evo_vm_modo'), vm_peep=ev('evo_vm_peep'), vm_fio2=ev('evo_vm_fio2');
+  var vm_vc=ev('evo_vm_vc'), vm_ps=ev('evo_vm_pinsp_ps'), vm_drive=ev('evo_vm_drive');
+  if (vm_modo)  resp.push('Modo: '+vm_modo);
+  if (vm_ps)    resp.push('PS/Pinsp: '+vm_ps);
+  if (vm_peep)  resp.push('PEEP: '+vm_peep);
+  if (vm_fio2)  resp.push('FiO2: '+vm_fio2);
+  if (vm_vc)    resp.push('VC: '+vm_vc);
+  if (vm_drive) resp.push('Drive: '+vm_drive);
+  var cn=ev('evo_cn_litros'), vf=ev('evo_venturi_fio2');
+  if (cn) resp.push('CN: '+cn+' L/min'); if (vf) resp.push('Venturi FiO2: '+vf+'%');
+  var gaso=[]; var _g=function(l,k){var v=ev(k);if(v) gaso.push(l+': '+v);};
+  _g('pH','evo_gas_ph'); _g('pO2','evo_gas_po2'); _g('pCO2','evo_gas_pco2');
+  _g('HCO3','evo_gas_hco3'); _g('BE','evo_gas_be');
+  if (gaso.length) resp.push('GSA: '+gaso.join(' | '));
+  if (resp.length) dados.push('Respiratório: ' + resp.join(' | '));
+
+  // Neurológico
+  var glas=ev('evo_glasgow_total'), rass=ev('evo_rass_atual'), del=ck('evo_delirium');
+  var neuro=[]; if (glas) neuro.push('Glasgow: '+glas); if (rass) neuro.push('RASS: '+rass);
+  if (del) neuro.push('Delirium: '+del);
+  if (neuro.length) dados.push('Neurológico: ' + neuro.join(' | '));
+
+  // Renal
+  var cr=ev('evo_creatinina'), ur=ev('evo_ureia'), diu=ev('evo_diurese_ml');
+  var bh=ev('evo_bh_ml'), clcr=ev('evo_clcr_cg'), trs=ck('evo_trs');
+  var renal=[]; if (cr) renal.push('Cr: '+cr); if (ur) renal.push('Ur: '+ur);
+  if (diu) renal.push('Diurese: '+diu+' mL'); if (bh) renal.push('BH: '+bh+' mL');
+  if (clcr) renal.push('ClCr: '+clcr); if (trs) renal.push('TRS: '+trs);
+  if (renal.length) dados.push('Renal: ' + renal.join(' | '));
+
+  // Infecção
+  var foco=ev('evo_inf_foco'), atbs=[], leuco=ev('evo_leuco'), pcr=ev('evo_pcr');
+  var febre=ck('evo_febre'), febreEp=ev('evo_febre_episodios'), febrePic=ev('evo_febre_pico');
+  for (var i=1;i<=3;i++){var a=ev('evo_inf_atb'+i),d=ev('evo_inf_dia_atb'+i),t=ev('evo_inf_total_atb'+i); if(a) atbs.push(a+(d?'('+d+(t?' de '+t:'')+')':'')); }
+  var infec=[]; if(foco) infec.push('Foco: '+foco); if(atbs.length) infec.push('ATB: '+atbs.join(' | '));
+  if(febre==='sim') { var ftxt='Febre 24h: sim'; if(febreEp) ftxt+=' ('+febreEp+' ep.'; if(febrePic) ftxt+=(febreEp?', ':' (')+'pico '+febrePic+'°C'; if(febreEp||febrePic) ftxt+=')'; infec.push(ftxt); }
+  else if (febre==='nao') infec.push('Afebril');
+  if(leuco) infec.push('Leuco: '+leuco); if(pcr) infec.push('PCR: '+pcr);
+  if(infec.length) dados.push('Infecção: ' + infec.join(' | '));
+
+  // Labs relevantes
+  var labs=[];
+  var _lab=function(l,k){var v=ev(k);if(v) labs.push(l+': '+v);};
+  _lab('Hb','evo_hb'); _lab('Plaquetas','evo_plaquetas'); _lab('Na','evo_na'); _lab('K','evo_k');
+  _lab('Mg','evo_mg'); _lab('TGO','evo_tgo'); _lab('TGP','evo_tgp');
+  if(labs.length) dados.push('Labs: ' + labs.join(' | '));
+
+  var dadosStr = dados.join('\n');
+
+  var prompt = 'Você é um intensivista experiente da UTI do Hospital Nossa Senhora da Saúde de Diamantina.\n'
+    + 'Com base nos dados clínicos abaixo, escreva a impressão clínica do dia em português médico.\n'
+    + 'REGRAS OBRIGATÓRIAS:\n'
+    + '- Máximo 4 linhas, texto corrido, sem tópicos ou bullets\n'
+    + '- Comece SEMPRE com: Paciente em D[X] de [diagnóstico principal],\n'
+    + '- Linguagem técnica e direta, sem introduções ou conclusões\n'
+    + '- NÃO invente dados ausentes\n'
+    + '- NÃO faça recomendações de conduta\n'
+    + 'ORDEM DE CONTEÚDO (inclua apenas o que houver dados):\n'
+    + '1. Dia de UTI + diagnóstico\n'
+    + '2. Hemodinâmica: tendência das aminas (ex: sem DVA, em desmame de noradrenalina), PA e FC\n'
+    + '3. Respiratório: modo ventilatório ou suporte, tendência, SpO2/FiO2\n'
+    + '4. Neurológico: Glasgow, sedação, delirium se relevante\n'
+    + '5. Renal: creatinina com tendência, diurese, TRS se em uso\n'
+    + '6. Infecção: foco, ATB em uso, febre nas últimas 24h\n'
+    + '7. Laboratorial: apenas valores com tendência relevante\n\n'
+    + 'DADOS DO PACIENTE HOJE:\n' + dadosStr;
+
+    if (statusEl) statusEl.textContent = '✨ Gerando com IA...';
+  campo.value = '';
+  campo.placeholder = 'Gerando impressão clínica com IA...';
+
+  fetch('https://us-central1-gestaoutihnss.cloudfunctions.net/claudeProxy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 400,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    var texto = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text.trim() : '';
+    if (texto) {
+      campo.value = texto;
+      campo.placeholder = '';
+      if (statusEl) statusEl.textContent = '✅ Gerado pela IA';
+      setTimeout(function() { if (statusEl) statusEl.textContent = ''; }, 4000);
+    } else {
+      if (statusEl) statusEl.textContent = '❌ Sem resposta da IA';
+    }
+  })
+  .catch(function(e) {
+    if (statusEl) statusEl.textContent = '❌ Erro: ' + e.message;
+    campo.placeholder = '';
+  });
+}
+
+// ============================================================
+// IA — Resumo de Alta / Transferência
+// ============================================================
+async function gerarResumoAltaIAHNSS() {
+  var statusEl = document.getElementById('iaAltaStatus');
+  var textoEl  = document.getElementById('resumoAltaTexto');
+  if (!textoEl) return;
+
+  if (statusEl) statusEl.textContent = '✨ Gerando resumo com IA...';
+
+  // Coletar dados da admissão
+  var dadosResumo = (typeof coletarDadosParaResumo === 'function') ? coletarDadosParaResumo() : {};
+
+  // Buscar todas as evoluções do leito
+  var leitoId = ctiAtual + '_' + leitoAtual;
+  var evolucoes = [];
+  try {
+    var snap = await db.collection('evolucoes').where('leitoId','==',leitoId).get();
+    snap.forEach(function(doc) { evolucoes.push(doc.data()); });
+    evolucoes.sort(function(a,b) {
+      var ta = a.timestamp ? a.timestamp.toMillis() : 0;
+      var tb = b.timestamp ? b.timestamp.toMillis() : 0;
+      return ta - tb;
+    });
+  } catch(e) {}
+
+  // Montar texto com dados
+  var linhas = [];
+  linhas.push('IDENTIFICAÇÃO: ' + (dadosResumo.nome||'') + ', ' + (dadosResumo.idade||'') + ' anos, sexo ' + (dadosResumo.sexo||''));
+  linhas.push('Data admissão UTI: ' + (dadosResumo.dataAdmissao||''));
+  linhas.push('Diagnóstico: ' + (dadosResumo.motivoUTI || dadosResumo.hma || ''));
+  linhas.push('HPP: ' + (dadosResumo.hpp||'') + (dadosResumo.cirurgias ? ' | Cirurgias: '+dadosResumo.cirurgias : ''));
+  linhas.push('Alergias: ' + (dadosResumo.alergias||'Não referidas'));
+  linhas.push('Total de evoluções registradas: ' + evolucoes.length);
+
+  // Resumo das evoluções (pegar dados relevantes de cada)
+  if (evolucoes.length > 0) {
+    linhas.push('\nEVOLUÇÃO CRONOLÓGICA:');
+    evolucoes.forEach(function(evo, idx) {
+      var d = evo.dados || {};
+      var data = (evo.data||'').split(' ')[0] || ('D'+(idx+1));
+      var items = [];
+      var _g = function(k){ return (d[k]||'').trim(); };
+      if (_g('evo_problemas'))      items.push('Problemas: '+_g('evo_problemas').substring(0,120));
+      if (_g('evo_hemo_pa'))        items.push('PA: '+_g('evo_hemo_pa'));
+      var sup = _g('evo_resp_suporte'); if (sup) items.push('Suporte resp: '+sup);
+      if (_g('evo_noradrenalina_dose')) items.push('Nora: '+_g('evo_noradrenalina_dose'));
+      if (_g('evo_creatinina'))     items.push('Cr: '+_g('evo_creatinina'));
+      if (_g('evo_diurese_ml'))     items.push('Diu: '+_g('evo_diurese_ml')+'mL');
+      if (_g('evo_glasgow_total'))  items.push('GCS: '+_g('evo_glasgow_total'));
+      if (_g('evo_impressao'))      items.push('Impressão: '+_g('evo_impressao').substring(0,150));
+      if (_g('evo_plano_24h'))      items.push('Plano: '+_g('evo_plano_24h').substring(0,120));
+      if (items.length) linhas.push('[' + data + '] ' + items.join(' | '));
+    });
+  }
+
+  // Status atual (última evolução)
+  if (evolucoes.length > 0) {
+    var ultima = evolucoes[evolucoes.length-1].dados || {};
+    var _u = function(k){ return (ultima[k]||'').trim(); };
+    linhas.push('\nSTATUS ATUAL (última evolução):');
+    var atbs=[];
+    for (var i=1;i<=3;i++){var a=_u('evo_inf_atb'+i),d2=_u('evo_inf_dia_atb'+i),t=_u('evo_inf_total_atb'+i); if(a) atbs.push(a+(d2?'('+d2+(t?' de '+t:'')+')':'')); }
+    if (atbs.length) linhas.push('ATB: '+atbs.join(', '));
+    var inv=[];
+    var _iv=function(l,loc,dia){if(loc||dia) inv.push(l+(loc?' '+loc:'')+(dia?' '+dia:''));};
+    _iv('CVC',_u('evo_cvc_local'),_u('evo_cvc_dias'));
+    _iv('SVD',_u('evo_svd_local'),_u('evo_svd_dias'));
+    _iv('TOT/TQT',_u('evo_tot_local'),_u('evo_tot_dias'));
+    var drenos=_u('evo_drenos_outros'); if(drenos) inv.push('Drenos: '+drenos);
+    if (inv.length) linhas.push('Invasivos: '+inv.join(' | '));
+    if (_u('evo_medicacoes_atuais')) linhas.push('Medicações: '+_u('evo_medicacoes_atuais'));
+    if (_u('evo_dieta_select') || _u('evo_dieta_oral_desc')) linhas.push('Nutrição: '+(_u('evo_via_alimentacao')||'')+ ' '+(_u('evo_dieta_select')||_u('evo_dieta_oral_desc')));
+  }
+
+  var dadosStr = linhas.join('\n');
+
+  var prompt = 'Você é um intensivista experiente da UTI do Hospital Nossa Senhora da Saúde de Diamantina, '
+    + 'redigindo um resumo de alta de UTI para o médico receptor.\n'
+    + 'REGRAS OBRIGATÓRIAS:\n'
+    + '- Português médico técnico e direto\n'
+    + '- Organize nos tópicos abaixo, incluindo APENAS os que tiverem dados\n'
+    + '- NÃO invente dados ausentes\n'
+    + '- Use linguagem evolutiva: prefira evoluiu com melhora de... a listas estáticas\n\n'
+    + 'ESTRUTURA:\n'
+    + '[IDENTIFICAÇÃO] Paciente, idade, sexo, dias de UTI, datas.\n'
+    + '[DIAGNÓSTICO PRINCIPAL] Motivo de internação em uma frase.\n'
+    + '[EVOLUÇÃO CLÍNICA] Narrativa dos principais eventos. Máximo 6 linhas.\n'
+    + '[STATUS NA ALTA] Hemodinâmico, Respiratório, Neurológico, Renal, Infeccioso, Nutricional.\n'
+    + '[DISPOSITIVOS NA ALTA] Invasivos presentes com dias.\n'
+    + '[ANTIMICROBIANOS NA ALTA] Nome, dose, dia de tratamento.\n'
+    + '[PENDÊNCIAS] Apenas se houver. Omitir caso contrário.\n\n'
+    + 'DADOS DO PACIENTE:\n' + dadosStr;
+
+    try {
+    var resp = await fetch('https://us-central1-gestaoutihnss.cloudfunctions.net/claudeProxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1200,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    var data = await resp.json();
+    var texto = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text.trim() : '';
+    if (texto) {
+      textoEl.value = texto;
+      if (statusEl) statusEl.textContent = '✅ Resumo gerado pela IA';
+      setTimeout(function() { if (statusEl) statusEl.textContent = ''; }, 5000);
+    } else {
+      if (statusEl) statusEl.textContent = '❌ Sem resposta';
+    }
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '❌ Erro: ' + e.message;
+  }
+}
+
 function darAlta() {
     var nomePaciente = document.getElementsByName("nome")[0]?.value || "";
     
@@ -7506,7 +7768,11 @@ function mostrarModalResumoAlta(nomePaciente, loading) {
                     <button onclick="fecharModalResumoAlta()" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;">&times;</button>
                 </div>
                 <div style="padding:20px;overflow-y:auto;flex:1;">
-                    <div id="resumoAltaConteudo">
+                    <div style="margin-bottom:8px; display:flex; gap:8px; flex-wrap:wrap;">
+  <button onclick="gerarResumoAltaIAHNSS()" style="background:#7b1fa2; color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-size:13px;">✨ Gerar Resumo com IA</button>
+  <span id="iaAltaStatus" style="font-size:12px; color:#666; align-self:center;"></span>
+</div>
+<div id="resumoAltaConteudo">
                         <div style="background:#e3f2fd;border:1px solid #2196f3;border-radius:6px;padding:12px;margin-bottom:15px;color:#0d47a1;">
                             ℹ️ Resumo gerado automaticamente com base nos dados da internação. Revise e edite conforme necessário.
                         </div>
