@@ -3694,11 +3694,11 @@ if (tipo === 'VM') vm.classList.remove('hidden');
 
       // Montar modal simples
       var html = '<div id="modalRemanej" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;">'
-        + '<div style="background:#fff;border-radius:10px;padding:24px;min-width:340px;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">'
+        + '<div style="background:#fff;border-radius:10px;padding:24px;min-width:360px;max-width:440px;max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.3);">'
         + '<h3 style="margin:0 0 6px 0;color:#e65100;">🔄 Remanejamento de Leito</h3>'
         + '<p style="margin:0 0 16px;color:#555;font-size:13px;">Paciente: <b>' + nomePct + '</b> (Leito ' + leitoAtual + ')</p>'
         + '<p style="margin:0 0 10px;font-size:13px;font-weight:bold;">Escolha o leito de destino:</p>'
-        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">';
+        + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;">';
 
       opcoes.forEach(function(op) {
         var bg = op.vago ? '#e8f5e9' : '#fff8e1';
