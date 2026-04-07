@@ -3685,12 +3685,11 @@ if (tipo === 'VM') vm.classList.remove('hidden');
 
       var opcoes = leitosDisponiveis.map(function(n) {
         var chave = ctiAtual + '_' + n;
-        var isExtra = (n === 11);
         var nomeOcup = ocupados[chave] || '';
         var vago = !nomeOcup;
-        var label = isExtra ? 'Extra/Bloco' : ('Leito ' + n);
-        var status = vago ? (isExtra ? '🟡 Disponível (Bloco)' : '✅ Vago') : '⚠️ Ocupado: ' + nomeOcup;
-        return { num: n, chave: chave, status: status, vago: vago, isExtra: isExtra, label: label };
+        var label = (n === 11) ? 'Extra/Bloco' : ('Leito ' + n);
+        var status = vago ? '✅ Vago' : '⚠️ Ocupado: ' + nomeOcup;
+        return { num: n, chave: chave, status: status, vago: vago, label: label };
       });
 
       // Montar modal simples
@@ -3702,10 +3701,8 @@ if (tipo === 'VM') vm.classList.remove('hidden');
         + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">';
 
       opcoes.forEach(function(op) {
-        var bg, border;
-        if (op.isExtra && op.vago)   { bg='#fff8e1'; border='#ffa726'; }
-        else if (op.vago)             { bg='#e8f5e9'; border='#4caf50'; }
-        else                          { bg='#fafafa'; border='#bdbdbd'; }
+        var bg = op.vago ? '#e8f5e9' : '#fff8e1';
+        var border = op.vago ? '#4caf50' : '#ff9800';
         html += '<button onclick="confirmarRemanejamento(' + op.num + ')" '
           + 'style="background:' + bg + ';border:2px solid ' + border + ';border-radius:6px;padding:8px;cursor:pointer;text-align:left;font-size:12px;">'
           + '<b>' + op.label + '</b><br><span style="font-size:11px;">' + op.status + '</span>'
@@ -6555,14 +6552,11 @@ function atualizarSelectLeitos() {
                 
                 if (!temPaciente) {
                     if (num === 11) {
-                        opt.textContent = '🟡 Leito Extra / Bloco (vago)';
-                        opt.style.color = '#e65100';
+                        opt.textContent = '🟢 Extra/Bloco (vago)';
                     } else {
                         opt.textContent = '🟢 Leito ' + num + ' (vago)';
-                        opt.style.color = '#2e7d32';
                     }
-                } else if (num === 11) {
-                    opt.textContent = '🟠 Extra/Bloco - ' + (dados.nome||'').substring(0,12);
+                    opt.style.color = '#2e7d32';
                 }
                 
                 selLeito.appendChild(opt);
