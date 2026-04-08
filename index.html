@@ -6198,17 +6198,20 @@ function testarConexaoFirebase() {
 // ========== FUNÇÕES DE SINCRONIZAÇÃO COM FIREBASE ==========
 
 function iniciarListenerTempoReal() {
-    // Listener para leitos — atualiza APENAS os nomes no dropdown
-    // NÃO chama carregarLeito() para evitar o loop infinito:
-    // salvar → onSnapshot → atualizarSelectLeitos → carregarLeito → limpa form
+    // Listener para leitos — atualiza o dropdown sem recarregar o formulário
     db.collection('leitos').onSnapshot(function(snapshot) {
-        atualizarNomesSelectLeitos(snapshot);
+        // Usa flag para evitar loop: onSnapshot → atualizarSelectLeitos → carregarLeito → salvar → onSnapshot
+        _atualizandoPorSnapshot = true;
+        atualizarSelectLeitos();
+        _atualizandoPorSnapshot = false;
         atualizarSyncStatus('ok');
     }, function(error) {
         console.error('Erro no listener:', error);
         atualizarSyncStatus('error');
     });
 }
+
+var _atualizandoPorSnapshot = false;
 
 function atualizarNomesSelectLeitos(snapshot) {
     // Atualiza só os labels do dropdown sem recarregar o formulário
@@ -6617,7 +6620,10 @@ function atualizarSelectLeitos() {
                 leitoAtual = leitos[0];
             }
             
-            carregarLeito();
+            // Só recarrega o formulário se NÃO for chamado pelo onSnapshot
+            if (!_atualizandoPorSnapshot) {
+                carregarLeito();
+            }
             atualizarTitulo();
         })
         .catch(function(error) {
@@ -6631,7 +6637,9 @@ function atualizarSelectLeitos() {
                 selLeito.appendChild(opt);
             });
             leitoAtual = leitos[0];
-            carregarLeito();
+            if (!_atualizandoPorSnapshot) {
+                carregarLeito();
+            }
             atualizarTitulo();
         });
 }
