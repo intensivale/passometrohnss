@@ -1982,6 +1982,21 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <button class="calc-icon-btn hidden" id="calc_evo_med_cisatracurio" onclick="openDrugCalc('cisatracurio', 'dose_evo_med_cisatracurio')" type="button" title="Calculadora">🧮</button>
 </div>
 </div>
+<div class="row" style="align-items: center; gap: 10px; margin-top: 6px; flex-wrap: wrap;">
+<div style="min-width: 260px; font-weight: bold; color: #555;">Vasodilatadores:</div>
+<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
+<input id="evo_chk_tridil" onclick="evoToggleHemoDrug('tridil')" type="checkbox"/> Tridil (NTG)
+</label>
+<div class="hidden" id="evo_drug_tridil" style="min-width: 220px; display: flex; gap: 8px; align-items: center;">
+<input id="evo_tridil_dose" name="evo_tridil_dose" placeholder="ex: 20 mcg/min" type="text" style="flex: 1;"/>
+</div>
+<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
+<input id="evo_chk_nipride" onclick="evoToggleHemoDrug('nipride')" type="checkbox"/> Nipride (NPS)
+</label>
+<div class="hidden" id="evo_drug_nipride" style="min-width: 220px; display: flex; gap: 8px; align-items: center;">
+<input id="evo_nipride_dose" name="evo_nipride_dose" placeholder="ex: 1 mcg/kg/min" type="text" style="flex: 1;"/>
+</div>
+</div>
 </div>
 <!-- Exame Neurológico -->
 <div class="row" style="margin-top: 15px;">
@@ -3413,6 +3428,8 @@ if (tipo === 'VM') vm.classList.remove('hidden');
     _dg('Milrinona','evo_milrinona_dose');
     _dg('Noradrenalina','evo_noradrenalina_dose');
     _dg('Vasopressina','evo_vasopressina_dose');
+    _dg('Tridil','evo_tridil_dose');
+    _dg('Nipride','evo_nipride_dose');
     // Sedação / analgesia em infusão contínua
     var sedMeds = [
       {id:'evo_med_midazolam',   label:'Midazolam',   doseId:'dose_evo_med_midazolam'},
@@ -4108,6 +4125,7 @@ if (tipo === 'VM') vm.classList.remove('hidden');
           'evo_cult1_tipo','evo_cult1_data','evo_cult1_resultado','evo_cult1_germe','evo_cult1_sens',
           'evo_cult2_tipo','evo_cult2_data','evo_cult2_resultado','evo_cult2_germe','evo_cult2_sens',
           'evo_cult3_tipo','evo_cult3_data','evo_cult3_resultado','evo_cult3_germe','evo_cult3_sens',
+          'evo_tridil_dose', 'evo_nipride_dose',
           'evo_cvc_local', 'evo_cvc_data', 'evo_cvc_dias',
           'evo_art_local', 'evo_art_data', 'evo_art_dias',
           'evo_hd_local', 'evo_hd_data', 'evo_hd_dias',
@@ -6180,14 +6198,40 @@ function testarConexaoFirebase() {
 // ========== FUNÇÕES DE SINCRONIZAÇÃO COM FIREBASE ==========
 
 function iniciarListenerTempoReal() {
-    // Listener para leitos
+    // Listener para leitos — atualiza APENAS os nomes no dropdown
+    // NÃO chama carregarLeito() para evitar o loop infinito:
+    // salvar → onSnapshot → atualizarSelectLeitos → carregarLeito → limpa form
     db.collection('leitos').onSnapshot(function(snapshot) {
-        // Atualizar lista de leitos quando houver mudanças
-        atualizarSelectLeitos();
+        atualizarNomesSelectLeitos(snapshot);
         atualizarSyncStatus('ok');
     }, function(error) {
         console.error('Erro no listener:', error);
         atualizarSyncStatus('error');
+    });
+}
+
+function atualizarNomesSelectLeitos(snapshot) {
+    // Atualiza só os labels do dropdown sem recarregar o formulário
+    var selLeito = document.getElementById('seletorLeito');
+    if (!selLeito) return;
+    var dadosLeitos = {};
+    snapshot.forEach(function(doc) { dadosLeitos[doc.id] = doc.data(); });
+    var leitos = (ctiAtual === 'CTI1') ? leitosCTI1 : leitosCTI2;
+    Array.from(selLeito.options).forEach(function(opt) {
+        var num = parseInt(opt.value);
+        if (!num) return;
+        var chave = ctiAtual + '_' + num;
+        var dados = dadosLeitos[chave];
+        var isExtra = (num === 11);
+        if (dados && dados.nome && dados.nome.trim()) {
+            opt.textContent = '🔴 ' + (isExtra ? 'Extra' : num) + ' - ' + dados.nome.substring(0,12);
+            opt.style.color = '#c62828';
+            opt.style.fontWeight = 'bold';
+        } else {
+            opt.textContent = isExtra ? '🟢 Extra/Bloco (vago)' : '🟢 Leito ' + num + ' (vago)';
+            opt.style.color = '#2e7d32';
+            opt.style.fontWeight = 'normal';
+        }
     });
 }
 
@@ -6213,12 +6257,15 @@ function getChaveLeitoFirebase() {
 
 // Salvar leito no Firebase
 function salvarLeitoAtual() {
+    var evoArea = document.getElementById('evolucaoArea');
     var inputs = document.querySelectorAll("input, textarea, select");
     var conteudo = {};
     
     inputs.forEach(function(el) {
         if (el.id === 'seletorCTI' || el.id === 'seletorLeito') return;
         if (el.id === 'loginEmail' || el.id === 'loginPassword') return;
+        // Ignorar campos da área de evolução — eles têm coleção própria
+        if (evoArea && evoArea.contains(el)) return;
         
         var chave = el.name || el.id;
         if (!chave) return;
@@ -6871,7 +6918,6 @@ function salvarEvolucao() {
         db.collection('evolucoes').doc(evolucaoEmEdicao).update(evolucao)
             .then(function() {
                 atualizarSyncStatus('ok');
-                salvarLeitoAtual();
                 listarEvolucoes();
                 evolucaoEmEdicao = null;
                 var statusDiv = document.getElementById('status_evo_save');
@@ -6888,7 +6934,6 @@ function salvarEvolucao() {
         db.collection('evolucoes').add(evolucao)
             .then(function() {
                 atualizarSyncStatus('ok');
-                salvarLeitoAtual();
                 listarEvolucoes();
                 alert('✅ Evolução salva com sucesso!');
             })
@@ -7593,6 +7638,101 @@ async function gerarResumoAltaIAHNSS() {
   } catch(e) {
     if (statusEl) statusEl.textContent = '❌ Erro: ' + e.message;
   }
+}
+
+// ===== RESUMO DE ADMISSÃO =====
+function imprimirResumoAdmissao() {
+  var v = function(k){ var el = document.getElementsByName(k)[0]; return el ? (el.value||'').trim() : ''; };
+  var ck = function(k){ var el = document.querySelector('input[name="'+k+'"]:checked'); return el ? el.value : ''; };
+
+  var nome     = v('nome');
+  var idade    = v('idade');
+  var sexo     = v('sexo') || ck('sexo');
+  var peso     = v('peso');
+  var altura   = v('altura');
+  var dtAdm    = v('datahora_admissao') || v('data_admissao');
+  var dataFmt  = dtAdm;
+  try { var _d=new Date(dtAdm); if(!isNaN(_d.getTime())) dataFmt=String(_d.getDate()).padStart(2,'0')+'/'+String(_d.getMonth()+1).padStart(2,'0')+'/'+_d.getFullYear(); } catch(e){}
+
+  var dx       = v('diagnostico_internacao');
+  var hma      = v('hma');
+  var hpp      = v('hpp');
+  var cir      = v('cirurgias');
+  var alerg    = (function(){ var s=document.querySelector('input[name="alergias_check"][value="sim"]'); var n=document.querySelector('input[name="alergias_check"][value="nao"]'); if(s&&s.checked) return v('alergias')||'Sim'; if(n&&n.checked) return 'Não'; return ''; })();
+  var medDom   = v('med_dom');
+
+  // Labs admissão
+  var labs = [];
+  var _lab = function(lbl,k){ var val=v(k); if(val) labs.push('<b>'+lbl+':</b> '+val); };
+  _lab('Hb','hb'); _lab('Leuco','leuco'); _lab('Plaquetas','plaquetas');
+  _lab('Cr','creatinina'); _lab('Ur','ureia'); _lab('Na','na'); _lab('K','k');
+  _lab('TGO','tgo'); _lab('TGP','tgp'); _lab('BT','bt'); _lab('Albumina','albumina');
+  _lab('PCR','pcr'); _lab('Lactato','lactato_adm');
+  _lab('Troponina','troponina'); _lab('BNP','bnp');
+  _lab('Lipase','lipase'); _lab('Amilase','amilase');
+
+  // ATB admissão
+  var atbs = [];
+  for(var i=1;i<=3;i++){ var a=v('inf_atb'+i); if(a) atbs.push(a); }
+  var foco = v('inf_foco');
+
+  // Plano terapêutico
+  var plano = v('plano_metas');
+
+  // Exames admissão
+  var exAdm = v('exames_previos_relevantes') || v('exames_admissao');
+
+  var hoje = new Date();
+  var hojeStr = String(hoje.getDate()).padStart(2,'0')+'/'+String(hoje.getMonth()+1).padStart(2,'0')+'/'+hoje.getFullYear();
+
+  var css = 'body{font-family:Arial,sans-serif;font-size:11px;color:#000;margin:12mm 14mm;line-height:1.4;}'
+    + 'h1{font-size:12px;font-weight:bold;text-align:center;border-bottom:2px solid #000;margin:0 0 6px 0;padding-bottom:3px;}'
+    + '.bloco{margin-bottom:6px;} .titulo{font-weight:bold;color:#1a3a5c;border-bottom:1px solid #aac;margin-bottom:3px;padding-bottom:1px;text-transform:uppercase;font-size:10.5px;}'
+    + '.linha{margin:2px 0;font-size:10.5px;}'
+    + '@media print{body{margin:8mm 10mm;} @page{size:A4 portrait;margin:8mm;}}';
+
+  function bloco(titulo, linhas) {
+    if (!linhas.filter(Boolean).length) return '';
+    return '<div class="bloco"><div class="titulo">'+titulo+'</div>'
+      + linhas.filter(Boolean).map(function(l){ return '<div class="linha">'+l+'</div>'; }).join('')
+      + '</div>';
+  }
+  function item(lbl,val){ return val ? '<b>'+lbl+':</b> '+val : ''; }
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Resumo Admissão</title>'
+    + '<style>'+css+'</style></head><body>'
+    + '<h1>RESUMO DE ADMISSÃO — CTI ADULTO | HNSS DIAMANTINA &nbsp;&nbsp; '+hojeStr+'</h1>';
+
+  html += bloco('Identificação', [
+    [item('Nome',nome), item('Idade',idade+(idade?' anos':'')), item('Sexo',sexo), item('Peso',peso+(peso?' kg':'')), item('Altura',altura+(altura?' cm':''))].filter(Boolean).join(' &nbsp;|&nbsp; '),
+    item('Admissão UTI', dataFmt)
+  ]);
+
+  html += bloco('Diagnóstico de internação', [dx]);
+  html += bloco('História da doença atual', [hma]);
+  html += bloco('HPP / Cirurgias prévias / Alergias', [
+    item('HPP', hpp),
+    item('Cirurgias', cir),
+    item('Alergias', alerg)
+  ]);
+  html += bloco('Medicações de uso domiciliar', [medDom]);
+
+  if (labs.length) html += bloco('Exames na admissão', [labs.join(' &nbsp;|&nbsp; ')]);
+  if (exAdm) html += bloco('Exames prévios relevantes', [exAdm]);
+
+  if (foco || atbs.length) html += bloco('Infecção / ATB', [
+    item('Foco', foco),
+    atbs.length ? item('ATB', atbs.join(' | ')) : ''
+  ]);
+
+  html += bloco('Plano terapêutico', [plano]);
+
+  html += '<scr'+'ipt>window.onload=function(){window.print();}</'+'scr'+'ipt>'
+    + '</body></html>';
+
+  var w = window.open('','_blank','width=800,height=1000');
+  if(!w){ alert('Permita pop-ups.'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
 }
 
 function darAlta() {
