@@ -6198,16 +6198,37 @@ function testarConexaoFirebase() {
 // ========== FUNÇÕES DE SINCRONIZAÇÃO COM FIREBASE ==========
 
 function iniciarListenerTempoReal() {
-    // Listener para leitos — atualiza o dropdown sem recarregar o formulário
-    db.collection('leitos').onSnapshot(function(snapshot) {
-        // Usa flag para evitar loop: onSnapshot → atualizarSelectLeitos → carregarLeito → salvar → onSnapshot
-        _atualizandoPorSnapshot = true;
-        atualizarSelectLeitos();
-        _atualizandoPorSnapshot = false;
+    // Polling a cada 30s — atualiza APENAS os nomes no dropdown
+    // sem usar onSnapshot (que causava loop infinito ao salvar)
+    atualizarNomesDropdown();
+    setInterval(atualizarNomesDropdown, 30000);
+}
+
+function atualizarNomesDropdown() {
+    db.collection('leitos').get().then(function(snapshot) {
+        var selLeito = document.getElementById('seletorLeito');
+        if (!selLeito || selLeito.options.length === 0) return;
+        var dadosLeitos = {};
+        snapshot.forEach(function(doc) { dadosLeitos[doc.id] = doc.data(); });
+        Array.from(selLeito.options).forEach(function(opt) {
+            var num = parseInt(opt.value);
+            if (!num) return;
+            var chave = ctiAtual + '_' + num;
+            var dados = dadosLeitos[chave];
+            var isExtra = (num === 11);
+            if (dados && dados.nome && dados.nome.trim()) {
+                opt.textContent = '🔴 ' + (isExtra ? 'Extra' : num) + ' - ' + dados.nome.substring(0,12);
+                opt.style.color = '#c62828';
+                opt.style.fontWeight = 'bold';
+            } else {
+                opt.textContent = isExtra ? '🟢 Extra/Bloco (vago)' : '🟢 Leito ' + num + ' (vago)';
+                opt.style.color = '#2e7d32';
+                opt.style.fontWeight = 'normal';
+            }
+        });
         atualizarSyncStatus('ok');
-    }, function(error) {
-        console.error('Erro no listener:', error);
-        atualizarSyncStatus('error');
+    }).catch(function(e) {
+        console.warn('Erro ao atualizar nomes:', e.message);
     });
 }
 
@@ -6621,9 +6642,7 @@ function atualizarSelectLeitos() {
             }
             
             // Só recarrega o formulário se NÃO for chamado pelo onSnapshot
-            if (!_atualizandoPorSnapshot) {
-                carregarLeito();
-            }
+            carregarLeito();
             atualizarTitulo();
         })
         .catch(function(error) {
