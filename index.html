@@ -6641,7 +6641,6 @@ function atualizarSelectLeitos() {
                 leitoAtual = leitos[0];
             }
             
-            // Só recarrega o formulário se NÃO for chamado pelo onSnapshot
             carregarLeito();
             atualizarTitulo();
         })
@@ -6656,9 +6655,7 @@ function atualizarSelectLeitos() {
                 selLeito.appendChild(opt);
             });
             leitoAtual = leitos[0];
-            if (!_atualizandoPorSnapshot) {
-                carregarLeito();
-            }
+            carregarLeito();
             atualizarTitulo();
         });
 }
