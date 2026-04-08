@@ -6207,9 +6207,22 @@ function iniciarListenerTempoReal() {
 function atualizarNomesDropdown() {
     db.collection('leitos').get().then(function(snapshot) {
         var selLeito = document.getElementById('seletorLeito');
-        if (!selLeito || selLeito.options.length === 0) return;
+        if (!selLeito) return;
         var dadosLeitos = {};
         snapshot.forEach(function(doc) { dadosLeitos[doc.id] = doc.data(); });
+        var leitos = (ctiAtual === 'CTI1') ? leitosCTI1 : leitosCTI2;
+
+        // Se dropdown vazio, criar as opções
+        if (selLeito.options.length === 0) {
+            leitos.forEach(function(num) {
+                var opt = document.createElement('option');
+                opt.value = num;
+                selLeito.appendChild(opt);
+            });
+            leitoAtual = leitos[0];
+        }
+
+        // Atualizar labels
         Array.from(selLeito.options).forEach(function(opt) {
             var num = parseInt(opt.value);
             if (!num) return;
@@ -6226,6 +6239,13 @@ function atualizarNomesDropdown() {
                 opt.style.fontWeight = 'normal';
             }
         });
+
+        // Carregar leito se dropdown acabou de ser populado
+        if (selLeito.options.length > 0 && !sistemaInicializado) {
+            sistemaInicializado = true;
+            carregarLeito();
+        }
+
         atualizarSyncStatus('ok');
     }).catch(function(e) {
         console.warn('Erro ao atualizar nomes:', e.message);
