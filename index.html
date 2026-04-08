@@ -7140,7 +7140,7 @@ async function gerarRelatorioAltaIA() {
     + 'DADOS DO PACIENTE:\n' + dadosStr;
 
   try {
-    var resp = await fetch('https://us-central1-gestaoutihnss.cloudfunctions.net/claudeProxy', {
+    var resp = await fetch('https://claudeproxy-u57zqji7na-uc.a.run.app', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -7503,7 +7503,7 @@ function gerarImpressaoClinicaIA() {
   campo.value = '';
   campo.placeholder = 'Gerando impressão clínica com IA...';
 
-  fetch('https://us-central1-gestaoutihnss.cloudfunctions.net/claudeProxy', {
+  fetch('https://claudeproxy-u57zqji7na-uc.a.run.app', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -7625,7 +7625,7 @@ async function gerarResumoAltaIAHNSS() {
     + 'DADOS DO PACIENTE:\n' + dadosStr;
 
     try {
-    var resp = await fetch('https://us-central1-gestaoutihnss.cloudfunctions.net/claudeProxy', {
+    var resp = await fetch('https://claudeproxy-u57zqji7na-uc.a.run.app', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
