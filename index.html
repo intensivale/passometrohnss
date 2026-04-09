@@ -1737,6 +1737,10 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
         <input name="evo_inf_total_atb3" type="text"/>
 </label>
 </div>
+<div style="margin-top:6px; margin-bottom:6px;">
+  <button type="button" onclick="evoAdicionarATB()" style="background:#e8f5e9; border:1px solid #66bb6a; color:#2e7d32; border-radius:5px; padding:4px 14px; cursor:pointer; font-size:12px;">+ Adicionar ATB</button>
+</div>
+<div id="evo_atb_extras"></div>
 <div class="row nowrap" style="align-items:center; margin-top:8px;">
   <div style="min-width:160px; font-weight:bold; color:#555;">ATB suspensos:</div>
   <input name="evo_atb_suspensos" type="text" placeholder="ex: Vancomicina (suspenso D5), Fluconazol (D3)..." style="flex:1;"/>
@@ -2483,6 +2487,18 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
       </label>
 <div class="hidden" id="evo_go_txt_wrap" style="flex: 1;">
 <textarea name="evo_go_txt" placeholder="Descrever" rows="3" style="width: 100%;"></textarea>
+</div>
+</div>
+<div class="row nowrap" style="align-items: center;">
+<div style="min-width: 160px;">Psiquiatria:</div>
+<label style="flex-direction: row; align-items: center; gap: 8px;">
+<input name="evo_psiq" onclick="evoToggleBox('evo_psiq_txt_wrap', true)" type="radio" value="sim"/> Sim
+      </label>
+<label style="flex-direction: row; align-items: center; gap: 8px;">
+<input name="evo_psiq" onclick="evoToggleBox('evo_psiq_txt_wrap', false)" type="radio" value="nao"/> Não
+      </label>
+<div class="hidden" id="evo_psiq_txt_wrap" style="flex: 1;">
+<textarea name="evo_psiq_txt" placeholder="Descrever" rows="3" style="width: 100%;"></textarea>
 </div>
 </div>
 </div>
@@ -4154,7 +4170,8 @@ if (tipo === 'VM') vm.classList.remove('hidden');
           'evo_dieta_oral_desc', 'evo_dieta_parenteral_desc',
           'evo_atb_suspensos',
           'evo_exame_cardio', 'evo_exame_abdominal',
-          'evo_febre', 'evo_febre_periodo', 'evo_febre_episodios', 'evo_febre_pico'
+          'evo_febre', 'evo_febre_periodo', 'evo_febre_episodios', 'evo_febre_pico',
+          'evo_psiq', 'evo_psiq_txt'
         ];
         
         // ── Se houve transfusão na evolução anterior, registrar em problemas ──
@@ -4381,6 +4398,33 @@ if (tipo === 'VM') vm.classList.remove('hidden');
 
   function evoCultRemoverLinha(n) {
     var linha = document.getElementById('evo_cult_linha_'+n);
+    if (linha) linha.remove();
+  }
+
+  var _evoAtbCount = 3; // começa com 3 linhas fixas
+
+  function evoAdicionarATB() {
+    _evoAtbCount++;
+    var n = _evoAtbCount;
+    var html = '<div class="evo-atb-linha row nowrap" id="evo_atb_linha_'+n+'" style="margin-bottom:4px;">'
+      + '<label style="flex:1;">Antimicrobiano '+n+':'
+      + '<input name="evo_inf_atb'+n+'" type="text" placeholder="(opcional)"/></label>'
+      + '<label style="min-width:180px;">Data início:'
+      + '<input id="evo_inf_data_atb'+n+'" name="evo_inf_data_atb'+n+'" onchange="calcularDiasATB()" type="date" style="width:100%;"/></label>'
+      + '<label style="min-width:100px;">Dia:'
+      + '<input id="evo_inf_dia_atb'+n+'" name="evo_inf_dia_atb'+n+'" readonly style="background:#f0f0f0;width:100%;" type="text"/></label>'
+      + '<label style="min-width:120px;">de:'
+      + '<input name="evo_inf_total_atb'+n+'" type="text" style="width:100%;"/></label>'
+      + '<button type="button" onclick="evoRemoverATB('+n+')" '
+      + 'style="background:#ffebee;border:1px solid #ef9a9a;color:#c62828;border-radius:5px;'
+      + 'padding:4px 10px;cursor:pointer;font-size:12px;align-self:flex-end;margin-left:6px;">✕</button>'
+      + '</div>';
+    var container = document.getElementById('evo_atb_extras');
+    if (container) container.insertAdjacentHTML('beforeend', html);
+  }
+
+  function evoRemoverATB(n) {
+    var linha = document.getElementById('evo_atb_linha_'+n);
     if (linha) linha.remove();
   }
 
@@ -5123,6 +5167,7 @@ function evoGerarTexto() {
     var i12 = ic('evo_paliat','evo_paliat_txt'); if (i12) ics.push('Cuidados Paliativos: '+i12);
     var i13 = ic('evo_onco','evo_onco_txt'); if (i13) ics.push('Oncologia: '+i13);
     var i14 = ic('evo_go','evo_go_txt'); if (i14) ics.push('GO: '+i14);
+    var i15 = ic('evo_psiq','evo_psiq_txt'); if (i15) ics.push('Psiquiatria: '+i15);
     if (ics.length) { linhas.push('Interconsultas: ' + ics.join(' | ')); linhas.push(''); }
 
     // Alergias (se não foi incluída no HPP, mostrar separadamente)
