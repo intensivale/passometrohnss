@@ -677,6 +677,9 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <label style="min-width: 180px;">Leucócitos:
       <input name="leuco" type="text"/>
 </label>
+<label style="min-width: 180px;">PCR:
+      <input name="pcr" type="text"/>
+</label>
 <label style="min-width: 180px;">Plaquetas:
       <input name="plaquetas" type="text"/>
 </label>
@@ -1536,6 +1539,23 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <button class="calc-icon-btn" onclick="openDrugCalc('vasopressina', 'evo_vasopressina_dose')" type="button" title="Calculadora">🧮</button>
 </div>
 </div>
+<div class="row" style="align-items: center; gap: 10px; margin-top: 6px; flex-wrap: wrap;">
+<div style="min-width: 260px; font-weight: bold; color: #555;">Vasodilatadores:</div>
+<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
+<input id="evo_chk_tridil" onclick="evoToggleHemoDrug('tridil')" type="checkbox"/> Tridil (NTG)
+</label>
+<div class="hidden" id="evo_drug_tridil" style="min-width: 220px; display: flex; gap: 8px; align-items: center;">
+<input id="evo_tridil_dose" name="evo_tridil_dose" placeholder="ex: 20 mcg/min" type="text" style="flex: 1;"/>
+<button class="calc-icon-btn" id="calc_evo_tridil" onclick="openDrugCalc('tridil', 'evo_tridil_dose')" type="button" title="Calculadora">🧮</button>
+</div>
+<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
+<input id="evo_chk_nipride" onclick="evoToggleHemoDrug('nipride')" type="checkbox"/> Nipride (NPS)
+</label>
+<div class="hidden" id="evo_drug_nipride" style="min-width: 220px; display: flex; gap: 8px; align-items: center;">
+<input id="evo_nipride_dose" name="evo_nipride_dose" placeholder="ex: 1 mcg/kg/min" type="text" style="flex: 1;"/>
+<button class="calc-icon-btn" id="calc_evo_nipride" onclick="openDrugCalc('nipride', 'evo_nipride_dose')" type="button" title="Calculadora">🧮</button>
+</div>
+</div>
 <div class="row nowrap" style="align-items: center;">
 <label style="flex-direction: row; align-items: center; gap: 10px; min-width: 240px;">
 <input id="evo_chk_perf" onclick="evoTogglePerfusao()" type="checkbox"/> Perfusão (preencher)
@@ -1984,24 +2004,6 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <span>Cisatracúrio</span>
 <input class="dose-input hidden" id="dose_evo_med_cisatracurio" name="dose_evo_med_cisatracurio" placeholder="μg/kg/min ou ml/h" type="text"/>
 <button class="calc-icon-btn hidden" id="calc_evo_med_cisatracurio" onclick="openDrugCalc('cisatracurio', 'dose_evo_med_cisatracurio')" type="button" title="Calculadora">🧮</button>
-</div>
-</div>
-<div class="row" style="align-items: center; gap: 10px; margin-top: 6px; flex-wrap: wrap;">
-<div style="min-width: 260px; font-weight: bold; color: #555;">Vasodilatadores:</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input id="evo_chk_tridil" onclick="evoToggleHemoDrug('tridil')" type="checkbox"/> Tridil (NTG)
-</label>
-<div class="hidden" id="evo_drug_tridil" style="min-width: 220px; display: flex; gap: 8px; align-items: center;">
-<input id="evo_tridil_dose" name="evo_tridil_dose" placeholder="ex: 20 mcg/min" type="text" style="flex: 1;"/>
-<button class="calc-icon-btn" id="calc_evo_tridil" onclick="openDrugCalc('tridil', 'evo_tridil_dose')" type="button" title="Calculadora">🧮</button>
-</div>
-<label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
-<input id="evo_chk_nipride" onclick="evoToggleHemoDrug('nipride')" type="checkbox"/> Nipride (NPS)
-</label>
-<div class="hidden" id="evo_drug_nipride" style="min-width: 220px; display: flex; gap: 8px; align-items: center;">
-<input id="evo_nipride_dose" name="evo_nipride_dose" placeholder="ex: 1 mcg/kg/min" type="text" style="flex: 1;"/>
-<button class="calc-icon-btn" id="calc_evo_nipride" onclick="openDrugCalc('nipride', 'evo_nipride_dose')" type="button" title="Calculadora">🧮</button>
-</div>
 </div>
 </div>
 <!-- Exame Neurológico -->
