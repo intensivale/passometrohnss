@@ -1461,10 +1461,10 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <div class="row nowrap" style="align-items: center;">
 <div style="min-width: 220px;">POCUS pulmonar do dia:</div>
 <label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="evo_pocus_pulm" onclick="evoToggleBox('evo_pocus_pulm_desc', true)" type="radio" value="sim"/> Sim
+<input name="evo_pocus_pulm" onchange="evoToggleBox('evo_pocus_pulm_desc', this.value==='sim')" type="radio" value="sim"/> Sim
       </label>
 <label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
-<input name="evo_pocus_pulm" onclick="evoToggleBox('evo_pocus_pulm_desc', false)" type="radio" value="nao"/> Não
+<input name="evo_pocus_pulm" onchange="evoToggleBox('evo_pocus_pulm_desc', this.value==='sim')" type="radio" value="nao"/> Não
       </label>
 </div>
 <div class="hidden" id="evo_pocus_pulm_desc" style="margin-top: 6px;">
@@ -1989,12 +1989,14 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 </label>
 <div class="hidden" id="evo_drug_tridil" style="min-width: 220px; display: flex; gap: 8px; align-items: center;">
 <input id="evo_tridil_dose" name="evo_tridil_dose" placeholder="ex: 20 mcg/min" type="text" style="flex: 1;"/>
+<button class="calc-icon-btn" id="calc_evo_tridil" onclick="openDrugCalc('tridil', 'evo_tridil_dose')" type="button" title="Calculadora">🧮</button>
 </div>
 <label style="flex-direction: row; align-items: center; gap: 8px; min-width: unset;">
 <input id="evo_chk_nipride" onclick="evoToggleHemoDrug('nipride')" type="checkbox"/> Nipride (NPS)
 </label>
 <div class="hidden" id="evo_drug_nipride" style="min-width: 220px; display: flex; gap: 8px; align-items: center;">
 <input id="evo_nipride_dose" name="evo_nipride_dose" placeholder="ex: 1 mcg/kg/min" type="text" style="flex: 1;"/>
+<button class="calc-icon-btn" id="calc_evo_nipride" onclick="openDrugCalc('nipride', 'evo_nipride_dose')" type="button" title="Calculadora">🧮</button>
 </div>
 </div>
 </div>
@@ -9189,6 +9191,32 @@ const DRUG_DATA = {
     windows: [
       { label: 'Dose usual', min: 0.01, max: 0.04, unit: 'UI/min' }
     ]
+  },
+  'tridil': {
+    name: 'Tridil — Nitroglicerina (NTG)',
+    primaryUnit: 'mcg/min',
+    primaryKey: 'mcg_min',
+    solutions: [
+      { label: 'SG 5% 240ml + NTG 60ml (200 mcg/ml)', conc: 200, unit: 'mcg/ml' },
+      { label: 'SG 5% 160ml + NTG 40ml (1000 mcg/ml)', conc: 1000, unit: 'mcg/ml' }
+    ],
+    windows: [
+      { label: 'Angina / HAS leve', min: 5, max: 20, unit: 'mcg/min' },
+      { label: 'Insuficiência cardíaca / HAS grave', min: 20, max: 200, unit: 'mcg/min' }
+    ]
+  },
+  'nipride': {
+    name: 'Nipride — Nitroprussiato (NPS)',
+    primaryUnit: 'mcg/kg/min',
+    primaryKey: 'mcg_kg_min',
+    solutions: [
+      { label: 'SG 5% 240ml + NPS 50mg (167 mcg/ml)', conc: 167, unit: 'mcg/ml' },
+      { label: 'SG 5% 230ml + NPS 100mg (333 mcg/ml)', conc: 333, unit: 'mcg/ml' }
+    ],
+    windows: [
+      { label: 'HAS urgência/emergência', min: 0.3, max: 2, unit: 'mcg/kg/min' },
+      { label: 'Máximo (risco de toxicidade)', min: 2, max: 10, unit: 'mcg/kg/min' }
+    ]
   }
 };
 
@@ -9271,6 +9299,11 @@ function calculateDrug() {
     dose = (sol.conc * mlh) / 60;
     result = formatNumber(dose, 4);
     result += checkTherapeuticWindow(dose, drug.windows, drug.primaryUnit);
+  } else if (drug.primaryKey === 'mcg_min') {
+    // Dose em mcg/min — sem divisão por peso (Tridil/NTG)
+    dose = (sol.conc * mlh) / 60;
+    result = formatNumber(dose, 1);
+    result += checkTherapeuticWindow(dose, drug.windows, drug.primaryUnit);
   }
   
   document.getElementById('drugCalcResult').innerHTML = result;
@@ -9339,6 +9372,9 @@ function applyDrugCalc() {
   } else if (drug.primaryKey === 'ui_min') {
     var dose = (sol.conc * mlh) / 60;
     doseText = dose.toFixed(4).replace('.', ',') + ' ' + drug.primaryUnit + ' (' + mlh.toFixed(1).replace('.', ',') + ' ml/h)';
+  } else if (drug.primaryKey === 'mcg_min') {
+    var dose = (sol.conc * mlh) / 60;
+    doseText = dose.toFixed(1).replace('.', ',') + ' ' + drug.primaryUnit + ' (' + mlh.toFixed(1).replace('.', ',') + ' ml/h)';
   }
   
   var field = document.getElementById(currentTargetFieldId);
