@@ -1473,6 +1473,14 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <div class="hidden" id="evo_pocus_pulm_desc" style="margin-top: 6px;">
 <textarea name="evo_pocus_pulm_texto" placeholder="Descrição do POCUS pulmonar" rows="2" style="width: 100%;"></textarea>
 </div>
+<div style="margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+  <label style="min-width:200px; font-size:12px; color:#555; font-weight:bold;">Último POCUS pulmonar (data):
+    <input name="evo_pocus_pulm_ultima_data" type="date" style="width:100%;"/>
+  </label>
+  <label style="flex:1; min-width:260px; font-size:12px; color:#555; font-weight:bold;">Descrição do último POCUS pulmonar:
+    <input name="evo_pocus_pulm_ultima_desc" type="text" placeholder="ex: B-lines bilaterais, derrame esquerdo..." style="width:100%;"/>
+  </label>
+</div>
 <div class="row nowrap" style="align-items: center; margin-top: 10px;">
 <div style="min-width: 220px;">Rx tórax do dia:</div>
 <label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
@@ -1484,6 +1492,14 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 </div>
 <div class="hidden" id="evo_rx_torax_desc" style="margin-top: 6px;">
 <textarea name="evo_rx_torax_texto" placeholder="Descrição do Rx de tórax" rows="2" style="width: 100%;"></textarea>
+</div>
+<div style="margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+  <label style="min-width:200px; font-size:12px; color:#555; font-weight:bold;">Último Rx tórax (data):
+    <input name="evo_rx_ultima_data" type="date" style="width:100%;"/>
+  </label>
+  <label style="flex:1; min-width:260px; font-size:12px; color:#555; font-weight:bold;">Descrição do último Rx:
+    <input name="evo_rx_ultima_desc" type="text" placeholder="ex: sem infiltrados, derrame à direita..." style="width:100%;"/>
+  </label>
 </div>
 </div>
 <!-- Hemodinâmica -->
@@ -1586,6 +1602,14 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <div class="hidden" id="evo_ecg_txt_wrap" style="flex: 1;">
 <textarea name="evo_ecg_txt" placeholder="Descrever ECG do dia" rows="2" style="width: 100%;"></textarea>
 </div>
+<div style="margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+  <label style="min-width:200px; font-size:12px; color:#555; font-weight:bold;">Último ECG (data):
+    <input name="evo_ecg_ultima_data" type="date" style="width:100%;"/>
+  </label>
+  <label style="flex:1; min-width:260px; font-size:12px; color:#555; font-weight:bold;">Descrição do último ECG:
+    <input name="evo_ecg_ultima_desc" type="text" placeholder="ex: RS, sem alterações isquêmicas..." style="width:100%;"/>
+  </label>
+</div>
 <div class="row nowrap" style="align-items: center;">
 <div style="min-width: 220px;">POCUS cardíaco do dia:</div>
 <label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
@@ -1598,6 +1622,14 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 <div class="hidden" id="evo_pocus_card_desc" style="margin-top: 6px;">
 <textarea name="evo_pocus_card_texto" placeholder="Descrição do POCUS cardíaco" rows="2" style="width: 100%;"></textarea>
 </div>
+<div style="margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+  <label style="min-width:200px; font-size:12px; color:#555; font-weight:bold;">Último POCUS cardíaco (data):
+    <input name="evo_pocus_card_ultima_data" type="date" style="width:100%;"/>
+  </label>
+  <label style="flex:1; min-width:260px; font-size:12px; color:#555; font-weight:bold;">Descrição do último POCUS:
+    <input name="evo_pocus_card_ultima_desc" type="text" placeholder="ex: FE preservada, sem derrame..." style="width:100%;"/>
+  </label>
+</div>
 <div class="row nowrap" style="align-items: center; margin-top: 10px;">
 <div style="min-width: 220px;">VExUS do dia:</div>
 <label style="flex-direction: row; align-items: center; gap: 8px; min-width: 90px;">
@@ -1609,6 +1641,14 @@ let sistemaInicializado = false; // Impede salvar formulário vazio na inicializ
 </div>
 <div class="hidden" id="evo_vexus_desc" style="margin-top: 6px;">
 <textarea name="evo_vexus_texto" placeholder="Descrição do VExUS" rows="2" style="width: 100%;"></textarea>
+</div>
+<div style="margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+  <label style="min-width:200px; font-size:12px; color:#555; font-weight:bold;">Último VExUS (data):
+    <input name="evo_vexus_ultima_data" type="date" style="width:100%;"/>
+  </label>
+  <label style="flex:1; min-width:260px; font-size:12px; color:#555; font-weight:bold;">Descrição do último VExUS:
+    <input name="evo_vexus_ultima_desc" type="text" placeholder="ex: grau 0, sem congestão venosa..." style="width:100%;"/>
+  </label>
 </div>
 <!-- esCCO -->
 <div class="row nowrap" style="align-items: center; margin-top: 10px;">
@@ -3738,12 +3778,20 @@ if (tipo === 'VM') vm.classList.remove('hidden');
         + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;">';
 
       opcoes.forEach(function(op) {
-        var bg = op.vago ? '#e8f5e9' : '#fff8e1';
-        var border = op.vago ? '#4caf50' : '#ff9800';
-        html += '<button onclick="confirmarRemanejamento(' + op.num + ')" '
-          + 'style="background:' + bg + ';border:2px solid ' + border + ';border-radius:6px;padding:8px;cursor:pointer;text-align:left;font-size:12px;">'
-          + '<b>' + op.label + '</b><br><span style="font-size:11px;">' + op.status + '</span>'
-          + '</button>';
+        if (op.vago) {
+          // Leito vago — permite remanejamento
+          html += '<button onclick="confirmarRemanejamento(' + op.num + ')" '
+            + 'style="background:#e8f5e9;border:2px solid #4caf50;border-radius:6px;padding:8px;cursor:pointer;text-align:left;font-size:12px;">'
+            + '<b>' + op.label + '</b><br><span style="font-size:11px;">✅ Vago</span>'
+            + '</button>';
+        } else {
+          // Leito ocupado — bloqueado, não clicável
+          html += '<div '
+            + 'style="background:#f5f5f5;border:2px solid #e0e0e0;border-radius:6px;padding:8px;text-align:left;font-size:12px;opacity:0.6;cursor:not-allowed;">'
+            + '<b>' + op.label + '</b><br><span style="font-size:11px;color:#c62828;">🔴 ' + op.status.replace('⚠️ Ocupado: ','') + '</span>'
+            + '<br><span style="font-size:10px;color:#999;">Leito ocupado — não disponível</span>'
+            + '</div>';
+        }
       });
 
       html += '</div>'
@@ -4173,7 +4221,13 @@ if (tipo === 'VM') vm.classList.remove('hidden');
           'evo_atb_suspensos',
           'evo_exame_cardio', 'evo_exame_abdominal',
           'evo_febre', 'evo_febre_periodo', 'evo_febre_episodios', 'evo_febre_pico',
-          'evo_psiq', 'evo_psiq_txt'
+          'evo_psiq', 'evo_psiq_txt',
+          'evo_rx_ultima_data', 'evo_rx_ultima_desc',
+          'evo_pocus_card_ultima_data', 'evo_pocus_card_ultima_desc',
+          'evo_pocus_pulm_ultima_data', 'evo_pocus_pulm_ultima_desc',
+          'evo_vexus_ultima_data', 'evo_vexus_ultima_desc',
+          'evo_ecg_ultima_data', 'evo_ecg_ultima_desc',
+          'evo_tridil_dose', 'evo_nipride_dose'
         ];
         
         // ── Se houve transfusão na evolução anterior, registrar em problemas ──
@@ -4307,10 +4361,12 @@ if (tipo === 'VM') vm.classList.remove('hidden');
 
   function evoToggleHemoDrug(drug) {
     var map = {
-      dobutamina: { chk: 'evo_chk_dobutamina', div: 'evo_drug_dobutamina' },
-      milrinona: { chk: 'evo_chk_milrinona', div: 'evo_drug_milrinona' },
-      noradrenalina: { chk: 'evo_chk_noradrenalina', div: 'evo_drug_noradrenalina' },
-      vasopressina: { chk: 'evo_chk_vasopressina', div: 'evo_drug_vasopressina' }
+      dobutamina:   { chk: 'evo_chk_dobutamina',   div: 'evo_drug_dobutamina' },
+      milrinona:    { chk: 'evo_chk_milrinona',     div: 'evo_drug_milrinona' },
+      noradrenalina:{ chk: 'evo_chk_noradrenalina', div: 'evo_drug_noradrenalina' },
+      vasopressina: { chk: 'evo_chk_vasopressina',  div: 'evo_drug_vasopressina' },
+      tridil:       { chk: 'evo_chk_tridil',        div: 'evo_drug_tridil' },
+      nipride:      { chk: 'evo_chk_nipride',       div: 'evo_drug_nipride' }
     };
     if (!map[drug]) return;
 
@@ -6650,8 +6706,9 @@ function atualizarLeitos() {
     
     if (!selCTI || !selLeito) return;
     
-    // Só salva se o sistema já foi inicializado (evita sobrescrever dados na primeira carga)
-    if (currentUser && sistemaInicializado) {
+    // Só salva se o sistema já foi inicializado E há paciente no leito
+    var nomeAtualChk = (document.getElementsByName('nome')[0] || {}).value || '';
+    if (currentUser && sistemaInicializado && nomeAtualChk.trim()) {
         salvarLeitoAtual();
     }
     
@@ -6730,8 +6787,11 @@ function atualizarSelectLeitos() {
 }
 
 function trocarLeito() {
-    // Salvar leito atual antes de trocar
-    salvarLeitoAtual();
+    // Só salva se houver paciente no leito (evita sobrescrever com formulário vazio)
+    var nomeAtual = (document.getElementsByName('nome')[0] || {}).value || '';
+    if (nomeAtual.trim()) {
+        salvarLeitoAtual();
+    }
     
     var selLeito = document.getElementById('seletorLeito');
     leitoAtual = parseInt(selLeito.value);
